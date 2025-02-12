@@ -6,7 +6,7 @@ const upload2 = multer();
 const adminController = require("../controller/adminController");
 const adminValidation = require("../validation/AdminValidation");
 const workerController = require("../controller/workerController");
-const OrderService = require('../controller/newOrderList');
+const OrderService = require("../controller/newOrderList");
 const workerValidation = require("../validation/WorkerValidation");
 const salaryController = require("../controller/salaryController");
 const attendanceController = require("../controller/attendanceController");
@@ -15,7 +15,7 @@ const ExpenseController = require("../controller/expenseController");
 const OrderController = require("../controller/orderController");
 
 const storeController = require("../controller/storeController");
-const storeValidation = require("../validation/StoreValidation");
+const storeValidation = require("../validation/storeValidation");
 
 // ADMIN
 router.get("/admin/all", adminController.getAdmins);
@@ -56,7 +56,6 @@ router.get("/store/byId/:id", storeController.getStoreById);
 // Ko‘p mahsulotlarni yangilash yoki qo‘shish
 router.post("/store/update-many", storeController.storeUpdateMany);
 
-
 // Working Hours
 router.post("/workingHours/create", WorkingHoursController.createWorkingHours);
 router.get("/workingHours/", WorkingHoursController.getAllWorkingHours);
@@ -87,18 +86,26 @@ router.put("/order/:id", OrderController.updateOrder);
 router.delete("/order/:id", OrderController.deleteOrder);
 router.post("/order/giveMaterial", OrderController.giveMaterial);
 router.get("/order/progress/:orderId", OrderController.orderProgress);
-router.get("/order/get-material/:orderId/:materialId", OrderController.getMaterialById);
-router.get("/order/get-all-material/:orderId", OrderController.getAllMaterialById);
-
+router.get(
+  "/order/get-material/:orderId/:materialId",
+  OrderController.getMaterialById
+);
+router.get(
+  "/order/get-all-material/:orderId",
+  OrderController.getAllMaterialById
+);
 
 // New orders list
-router.post('/list', OrderService.createOrder);
-router.get('/list', OrderService.getOrders);
-router.get('/list/:id', OrderService.getOrderById);
-router.patch('/list/:id', OrderService.updateOrder);
-router.delete('/list/:id', OrderService.deleteOrder);
-router.delete('/list/:orderId/materials/:materialId', OrderService.deleteMaterialById);
-router.delete('/list/:orderId/materials', OrderService.deleteAllMaterials);
-router.post('/list/:orderId/materials', OrderService.createMaterial);
+router.post("/list", OrderService.createOrder);
+router.get("/list", OrderService.getOrders);
+router.get("/list/:id", OrderService.getOrderById);
+router.patch("/list/:id", OrderService.updateOrder);
+router.delete("/list/:id", OrderService.deleteOrder);
+router.delete(
+  "/list/:orderId/materials/:materialId",
+  OrderService.deleteMaterialById
+);
+router.delete("/list/:orderId/materials", OrderService.deleteAllMaterials);
+router.post("/list/:orderId/materials", OrderService.createMaterial);
 
 module.exports = router;
