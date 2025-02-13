@@ -3,7 +3,6 @@ const Response = require('../utils/response');
 
 class OrderService {
     static async createOrder(req, res) {
-        console.log(req.body);
         try {
             const order = await Order.create(req.body);
             return Response.created(res, "Order created successfully", order);
