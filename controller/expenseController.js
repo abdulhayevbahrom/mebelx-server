@@ -6,8 +6,8 @@ class ExpenseController {
     // Yangi expense qo'shish
     async createExpense(req, res) {
         try {
-            const { name, amount, amountType, description } = req.body;
-            const newExpense = new Expense({ name, amount, amountType, description });
+
+            const newExpense = new Expense(req.body);
             await newExpense.save();
             response.created(res, "Expense created successfully", newExpense);
         } catch (error) {
@@ -69,34 +69,39 @@ class ExpenseController {
         }
     }
 
-    // Expense ni vaqt oralig'ida olish
+    // Sanalarda xarajatlarni olish
     async getExpensesByPeriod(req, res) {
         try {
-            const { startDate, endDate } = req.body; // Frontenddan yuborilgan sanalar
+            let { startDate, endDate } = req.body; // Frontenddan sanalarni olish
 
-            // Agar sanalar kelsa, ularni Moment.js yordamida o'zgartiramiz
-            const startOfMonth = moment(startDate).startOf('day').toDate();
-            const endOfMonth = moment(endDate).endOf('day').toDate();
+            // Agar sanalar kiritilmagan bo'lsa, default qiymatlarni qo'yamiz
+            if (!startDate || !endDate) {
+                return response.badRequest(res, "Start date and end date are required");
+            }
+
+            // Sanalarni moment orqali formatlash
+            const startOfPeriod = moment(startDate, "YYYY-MM-DD").startOf("day").toDate();
+            const endOfPeriod = moment(endDate, "YYYY-MM-DD").endOf("day").toDate();
+
+            if (startOfPeriod > endOfPeriod) {
+                return response.badRequest(res, "Start date must be before end date");
+            }
 
             // Xarajatlarni topish
             const expenses = await Expense.find({
-                date: {
-                    $gte: startOfMonth, // Sananing boshlanishidan yoki undan keyin
-                    $lte: endOfMonth // Sananing oxiridan yoki undan oldin
-                }
-            });
+                date: { $gte: startOfPeriod, $lte: endOfPeriod }
+            }).sort({ date: 1 }); // Sanalar bo‘yicha tartiblab chiqamiz
 
-            if (expenses.length === 0) {
-                return response.notFound(res, 'No expenses found for the given period');
+            if (!expenses.length) {
+                return response.notFound(res, "No expenses found for the given period");
             }
 
-            // Xarajatlarni muvaffaqiyatli qaytarish
-            response.success(res, "Expenses fetched successfully", expenses);
+            // Xarajatlarni qaytarish
+            return response.success(res, "Expenses fetched successfully", expenses);
         } catch (error) {
-            response.serverError(res, error.message);
+            return response.serverError(res, error.message);
         }
     }
-
 }
 
 module.exports = new ExpenseController;

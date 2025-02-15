@@ -63,11 +63,6 @@ const OrderSchema = new mongoose.Schema(
     },
     image: { type: String },
     customer: { type: CustomerSchema, required: true },
-    paymentType: {
-      type: String,
-      enum: ["Naqd", "Karta orqali", "Bank orqali"],
-      required: true,
-    },
     materials: [MaterialSchema],
     address: { type: OrderAddressSchema, required: true },
     isType: { type: Boolean, default: true },
