@@ -1,6 +1,5 @@
 const io = require("socket.io-client");
-const headers = { transports: ["websocket"] };
-const socket = io("https://medme.abdujabborov.uz/", headers);
+const socket = io("http://localhost:3000", { transports: ["websocket"] });
 
 // socket.emit("users");
 // socket.on("users", (data) => console.log(data));

@@ -7,6 +7,7 @@ const sharp = require("sharp");
 class WorkerController {
   async getWorkers(req, res) {
     try {
+      req.app.get("socket").emit("all_worker", "salomaat");
       const workers = await workersDB.find();
       if (!workers.length) return response.notFound(res, "ishchilar topilmadi");
       response.success(res, "Barcha ishchilar", workers);
@@ -17,7 +18,8 @@ class WorkerController {
 
   async createWorker(req, res) {
     try {
-      const io = req.app.get("socket");
+      let io = req.app.get("socket");
+      io.emit("new_worker", "salomaat");
 
       const data = JSON.parse(JSON.stringify(req.body));
       let imageUrl = null;
@@ -46,7 +48,6 @@ class WorkerController {
       const worker = await workersDB.create(data);
       if (!worker) return response.error(res, "Ishchi qo'shilmadi");
       response.created(res, "Ishchi yaratildi", worker);
-      io.emit("new_worker", worker);
     } catch (err) {
       response.serverError(res, err.message, err);
     }
