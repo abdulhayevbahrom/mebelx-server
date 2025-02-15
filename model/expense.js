@@ -42,10 +42,7 @@ const expenseSchema = new mongoose.Schema({
         type: String,
         enum: ["Naqd", "Karta orqali", "Bank orqali"],
     },
-    : {
-    type: String,
-        enum: ["Naqd", "Karta orqali", "Bank orqali"],
-    }
+
 });
 
 const Expense = mongoose.model('expense', expenseSchema);
