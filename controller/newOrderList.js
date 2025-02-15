@@ -43,6 +43,18 @@ class OrderService {
             return Response.serverError(res, "Failed to retrieve order", error);
         }
     }
+
+    static async getOrderHistory(req, res) {
+        try {
+            const order = await Order.find({ isPaid: true });
+            console.log(order);
+            if (!order) return Response.notFound(res, "Order not found");
+            return Response.success(res, "Order retrieved successfully", order);
+        } catch (error) {
+            return Response.serverError(res, "Failed to retrieve order", error);
+        }
+    }
+
     static async updateOrder(req, res) {
         try {
             if (!req.body || Object.keys(req.body).length === 0) {

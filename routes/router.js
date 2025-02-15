@@ -94,6 +94,9 @@ router.get(
   "/order/get-all-material/:orderId",
   OrderController.getAllMaterialById
 );
+router.get("/order-debt", OrderController.calculateDebt);
+
+
 
 // New orders list
 router.post("/list", OrderService.createOrder);
@@ -101,6 +104,7 @@ router.get("/list", OrderService.getOrders);
 router.get("/list/:id", OrderService.getOrderById);
 router.patch("/list/:id", OrderService.updateOrder);
 router.delete("/list/:id", OrderService.deleteOrder);
+router.get("/list-history", OrderService.getOrderHistory);
 router.delete(
   "/list/:orderId/materials/:materialId",
   OrderService.deleteMaterialById

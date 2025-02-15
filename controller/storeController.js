@@ -29,11 +29,9 @@ class StoreController {
       const data = req.body;
 
       let store = await storeDB.findById(id);
-      if (!store) return response.error(res, "Mahsulot topilmadi");
-
 
       // Yangi ma'lumotlar bilan yangilash
-      store.quantity += data.quantity || 0;
+      store.quantity = data.quantity || 0;
       store.name = data.name || store.name;
       store.category = data.category || store.category;
       store.pricePerUnit = data.pricePerUnit || store.pricePerUnit;

@@ -157,40 +157,6 @@ class OrderController {
     }
   };
 
-
-  // Buyurtma uchun qancha material sarflanganligini hisoblash
-  // static orderProgress = async (req, res) => {
-  //   try {
-  //     const { orderId } = req.params;
-
-  //     const order = await Order.findById(orderId);
-  //     if (!order) return res.status(404).json({ message: "Buyurtma topilmadi" });
-
-  //     const givenMaterials = await MaterialGiven.find({ orderId });
-  //     console.log(givenMaterials);
-
-  //     let progress = order.materials.map((material) => {
-  //       const totalGiven = givenMaterials
-  //         .filter((g) => g.materialName === material.name)
-  //         .reduce((sum, g) => sum + g.givenQuantity, 0);
-
-  //       const remaining = Math.max(material.quantity - totalGiven, 0);
-  //       const percentage = ((totalGiven / material.quantity) * 100).toFixed(2);
-
-  //       return {
-  //         materialName: material.name,
-  //         required: material.quantity,
-  //         given: totalGiven,
-  //         remaining,
-  //         percentage,
-  //       };
-  //     });
-
-  //     response.success(res, "Materiallar topildi", progress);
-  //   } catch (error) {
-  //     return response.serverError(res, "Server xatosi", error);
-  //   }
-  // };
   static orderProgress = async (req, res) => {
     try {
       const { orderId } = req.params;
@@ -255,6 +221,34 @@ class OrderController {
       return response.serverError(res, "Server xatosi", error);
     }
   }
+
+
+  static async calculateDebt(req, res) {
+    try {
+
+      const totalDebt = await Order.aggregate([
+        {
+          $group: {
+            _id: null,
+            totalDebt: { $sum: { $subtract: ["$budget", "$paid"] } }
+          }
+        }
+      ]);
+
+      const debtAmount = totalDebt.length > 0 ? totalDebt[0].totalDebt : 0;
+      // Pul birligi formati bilan chiqarish
+      const formattedDebt = new Intl.NumberFormat("uz-UZ", {
+        style: "currency",
+        currency: "UZS",
+        minimumFractionDigits: 0,
+      }).format(debtAmount);
+
+      return response.success(res, "Umumiy qarz:", formattedDebt);
+    } catch (error) {
+      return response.serverError(res, "Server xatosi", error);
+    }
+  };
+
 }
 
 module.exports = OrderController;
