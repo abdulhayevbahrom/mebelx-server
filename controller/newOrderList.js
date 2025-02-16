@@ -47,7 +47,6 @@ class OrderService {
     static async getOrderHistory(req, res) {
         try {
             const order = await Order.find({ isPaid: true });
-            console.log(order);
             if (!order) return Response.notFound(res, "Order not found");
             return Response.success(res, "Order retrieved successfully", order);
         } catch (error) {

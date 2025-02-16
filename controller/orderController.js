@@ -174,7 +174,6 @@ class OrderController {
 
       // Umumiy foiz hisoblash
       const percentage = totalRequired > 0 ? ((totalGiven / totalRequired) * 100).toFixed(2) : 0;
-      console.log(percentage);
       response.success(res, "Umumiy materiallar ta'minlanish foizi", { percentage });
     } catch (error) {
       return response.serverError(res, "Server xatosi", error);

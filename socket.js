@@ -14,15 +14,13 @@ const users = [
 class soket {
   async connect(io) {
     io.on("connection", async (socket) => {
-      // get users
-      console.log("start");
 
       socket.on("users", async () => {
         socket.emit("users", users);
       });
 
       // disconnect a user
-      socket.on("disconnect", async () => {});
+      socket.on("disconnect", async () => { });
     });
   }
 }

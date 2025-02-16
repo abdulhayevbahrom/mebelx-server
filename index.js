@@ -38,5 +38,4 @@ app.use("/api", authMiddleware, router);
 app.get("/", (req, res) => res.send("Salom dunyo"));
 app.use(notfound);
 
-// app.listen(PORT, () => console.log(`http://localhost:${PORT}`));
 server.listen(PORT, () => console.log(`http://localhost:${PORT}`));

@@ -13,7 +13,7 @@ const attendanceController = require("../controller/attendanceController");
 const WorkingHoursController = require("../controller/workingHoursController");
 const ExpenseController = require("../controller/expenseController");
 const OrderController = require("../controller/orderController");
-
+const BalanceController = require("../controller/BalanceController");
 const storeController = require("../controller/storeController");
 const storeValidation = require("../validation/storeValidation");
 
@@ -77,6 +77,7 @@ router.get("/expenses/:id", ExpenseController.getExpenseById);
 router.put("/expenses/:id", ExpenseController.updateExpense);
 router.delete("/expenses/:id", ExpenseController.deleteExpense);
 router.post("/expenses/period", ExpenseController.getExpensesByPeriod);
+router.post("/expenses/report", ExpenseController.getBalanceReport);
 
 // Orders
 router.get("/order/", OrderController.getOrders);
@@ -111,5 +112,10 @@ router.delete(
 );
 router.delete("/list/:orderId/materials", OrderService.deleteAllMaterials);
 router.post("/list/:orderId/materials", OrderService.createMaterial);
+
+
+
+router.get("/balance", BalanceController.getBalance);
+router.post("/balance/update", BalanceController.updateBalance);
 
 module.exports = router;
