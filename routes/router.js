@@ -102,6 +102,7 @@ router.get("/order-debt", OrderController.calculateDebt);
 // New orders list
 router.post("/list", OrderService.createOrder);
 router.get("/list", OrderService.getOrders);
+router.get("/list/new", OrderService.getNewOrders);
 router.get("/list/:id", OrderService.getOrderById);
 router.patch("/list/:id", OrderService.updateOrder);
 router.delete("/list/:id", OrderService.deleteOrder);

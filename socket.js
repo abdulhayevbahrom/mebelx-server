@@ -14,6 +14,7 @@ const users = [
 class soket {
   async connect(io) {
     io.on("connection", async (socket) => {
+      // get users
 
       socket.on("users", async () => {
         socket.emit("users", users);
