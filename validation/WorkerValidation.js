@@ -38,7 +38,6 @@ const workerValidation = (req, res, next) => {
         dayOfBirth: "Tug‘ilgan sana kiritish shart",
         phone: "Telefon raqam kiritish shart, masalan: 939119572",
         idNumber: "ID raqam kiritish shart, masalan: AD1234567",
-
       },
       properties: {
         firstName: "Ism noto‘g‘ri formatda",
@@ -51,6 +50,7 @@ const workerValidation = (req, res, next) => {
   };
   const validate = ajv.compile(schema);
   let data = JSON.parse(JSON.stringify(req.body));
+
   const result = validate(data);
   if (!result) {
     return response.error(res, validate.errors[0].message);

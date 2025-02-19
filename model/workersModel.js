@@ -16,13 +16,19 @@ const workersModel = new mongoose.Schema(
     img: { type: String },
     role: {
       type: String,
-      enum: ["manager", "seller", "director", "accountant", "warehouseman", "deputy"],
+      enum: [
+        "manager",
+        "seller",
+        "director",
+        "accountant",
+        "warehouseman",
+        "deputy",
+        "worker",
+      ],
       default: "worker",
-    }
+    },
   },
   { timestamps: true, strict: "remove" }
 );
 
 module.exports = mongoose.model("workers", workersModel);
-
-

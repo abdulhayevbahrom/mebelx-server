@@ -5,11 +5,11 @@ const axios = require("axios");
 const sharp = require("sharp");
 const crypto = require("crypto");
 const jwt = require("jsonwebtoken");
+const { log } = require("console");
 
 class WorkerController {
   async getWorkers(req, res) {
     try {
-
       req.app.get("socket").emit("all_worker", "salomaat");
       const workers = await workersDB.find();
       if (!workers.length) return response.notFound(res, "ishchilar topilmadi");
@@ -21,11 +21,12 @@ class WorkerController {
 
   async createWorker(req, res) {
     try {
-      let io = req.app.get("socket");
+      // let io = req.app.get("socket");
 
       // io.emit("new_worker", "salomaat");
 
       const data = JSON.parse(JSON.stringify(req.body));
+
       if (req.file) {
         const formData = new FormData();
         const processedImage = await sharp(req.file.buffer)
