@@ -14,6 +14,11 @@ const workerValidation = (req, res, next) => {
       dayOfBirth: { type: "string", format: "date" },
       phone: { type: "string", minLength: 9, maxLength: 9 },
       address: { type: "string" },
+      password: { type: "string" },
+      login: { type: "string" },
+      role: { type: "string" },
+      salary: { type: "string" },
+      workerType: { type: "string" },
       idNumber: {
         type: "string",
         minLength: 9,
@@ -33,6 +38,7 @@ const workerValidation = (req, res, next) => {
         dayOfBirth: "Tug‘ilgan sana kiritish shart",
         phone: "Telefon raqam kiritish shart, masalan: 939119572",
         idNumber: "ID raqam kiritish shart, masalan: AD1234567",
+
       },
       properties: {
         firstName: "Ism noto‘g‘ri formatda",

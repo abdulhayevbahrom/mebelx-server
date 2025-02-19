@@ -3,10 +3,13 @@ const workersDB = require("../model/workersModel");
 const FormData = require("form-data");
 const axios = require("axios");
 const sharp = require("sharp");
+const crypto = require("crypto");
+const jwt = require("jsonwebtoken");
 
 class WorkerController {
   async getWorkers(req, res) {
     try {
+
       req.app.get("socket").emit("all_worker", "salomaat");
       const workers = await workersDB.find();
       if (!workers.length) return response.notFound(res, "ishchilar topilmadi");
@@ -19,11 +22,10 @@ class WorkerController {
   async createWorker(req, res) {
     try {
       let io = req.app.get("socket");
-      io.emit("new_worker", "salomaat");
+
+      // io.emit("new_worker", "salomaat");
 
       const data = JSON.parse(JSON.stringify(req.body));
-      let imageUrl = null;
-
       if (req.file) {
         const formData = new FormData();
         const processedImage = await sharp(req.file.buffer)
@@ -39,15 +41,56 @@ class WorkerController {
         });
 
         if (response?.data?.data?.url) {
-          imageUrl = response.data.data.url;
+          data.img = response.data.data.url;
         }
       }
 
-      data.img = imageUrl;
+      const salt = crypto.randomBytes(16).toString("hex");
+      let hashpassword = crypto
+        .createHash("sha256", salt)
+        .update(req.body.password)
+        .digest("hex");
+
+      data.password = `${salt}:${hashpassword}`;
 
       const worker = await workersDB.create(data);
       if (!worker) return response.error(res, "Ishchi qo'shilmadi");
       response.created(res, "Ishchi yaratildi", worker);
+    } catch (err) {
+      response.serverError(res, err.message, err);
+    }
+  }
+
+  async login(req, res) {
+    try {
+      let { login, password } = req.body;
+      let exactAdmin = await workersDB.findOne({ login });
+      if (!exactAdmin) return response.error(res, "Login yoki parol xato");
+
+      const [salt, storedHashedPassword] = exactAdmin.password.split(":");
+      const hashedPassword = crypto
+        .createHash("sha256", salt)
+        .update(password)
+        .digest("hex");
+
+      if (hashedPassword !== storedHashedPassword)
+        return response.error(res, "Login yoki parol xato");
+
+      let token = await jwt.sign(
+        {
+          id: exactAdmin._id,
+          login: exactAdmin.login,
+          role: exactAdmin.role,
+        },
+        process.env.JWT_SECRET_KEY,
+        {
+          expiresIn: "30d",
+        }
+      );
+      response.success(res, "Kirish muvaffaqiyatli", {
+        admin: { ...exactAdmin.toJSON() },
+        token,
+      });
     } catch (err) {
       response.serverError(res, err.message, err);
     }

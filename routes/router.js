@@ -3,8 +3,8 @@ const multer = require("multer");
 const upload = multer();
 const upload2 = multer();
 
-const adminController = require("../controller/adminController");
-const adminValidation = require("../validation/AdminValidation");
+// const adminController = require("../controller/adminController");
+// const adminValidation = require("../validation/AdminValidation");
 const workerController = require("../controller/workerController");
 const OrderService = require("../controller/newOrderList");
 const workerValidation = require("../validation/WorkerValidation");
@@ -17,12 +17,11 @@ const BalanceController = require("../controller/BalanceController");
 const storeController = require("../controller/storeController");
 const storeValidation = require("../validation/storeValidation");
 
-// ADMIN
-router.get("/admin/all", adminController.getAdmins);
-router.post("/admin/create", adminValidation, adminController.createAdmin);
-router.post("/admin/login", adminController.login);
-router.delete("/admin/delete/:id", adminController.deleteAdmin);
-router.put("/admin/update/:id", adminController.updateAdmin);
+// // ADMIN
+// router.get("/admin/all", adminController.getAdmins);
+// router.post("/admin/create", adminValidation, adminController.createAdmin);
+// router.delete("/admin/delete/:id", adminController.deleteAdmin);
+// router.put("/admin/update/:id", adminController.updateAdmin);
 
 // WORKER
 router.get("/worker/all", workerController.getWorkers);
@@ -32,6 +31,7 @@ router.post(
   workerValidation,
   workerController.createWorker
 );
+router.post("/worker/login", workerController.login);
 router.delete("/worker/delete/:id", workerController.deleteWorker);
 router.put("/worker/update/:id", workerController.updateWorker);
 
@@ -43,7 +43,7 @@ router.get(
   attendanceController.getMonthlyAttendance
 );
 router.post("/attendance/create", attendanceController.create);
-router.put("/attendance/update/:id", attendanceController.update);
+router.post("/attendance/update", attendanceController.updateAttendance);
 
 // STORE
 router.get("/store/all", storeController.getStore);

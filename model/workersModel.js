@@ -8,10 +8,21 @@ const workersModel = new mongoose.Schema(
     address: { type: String },
     dayOfBirth: { type: String },
     phone: { type: String, required: true, unique: true },
-    img: { type: String },
     idNumber: { type: String, required: true },
+    password: { type: String },
+    salary: { type: String },
+    login: { type: String, unique: true },
+    workerType: { type: String },
+    img: { type: String },
+    role: {
+      type: String,
+      enum: ["manager", "seller", "director", "accountant", "warehouseman", "deputy"],
+      default: "worker",
+    }
   },
-  { timestamps: true }
+  { timestamps: true, strict: "remove" }
 );
 
 module.exports = mongoose.model("workers", workersModel);
+
+

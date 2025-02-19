@@ -3,7 +3,6 @@ const express = require("express");
 const { connect } = require("mongoose");
 const cors = require("cors");
 const PORT = process.env.PORT || 5000;
-
 const notfound = require("./middleware/notfound.middleware");
 const router = require("./routes/router");
 const authMiddleware = require("./middleware/AuthMiddleware");

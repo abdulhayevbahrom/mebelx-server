@@ -13,20 +13,37 @@ class AttendanceController {
     }
   }
 
-  // update outTime
-  async update(req, res) {
+  updateAttendance = async (req, res) => {
     try {
-      const result = await AttendanceDB.findOneAndUpdate(
-        { _id: req.params.id },
-        { outTime: req.body.outTime }
-      );
-      if (!result)
-        return response.error(res, "Ma'lumot o'zgartirishda xatolik");
-      return response.success(res, "Ma'lumot o'zgartirildi", result);
+      const { workerId, name, date, workingHours, outTime } = req.body;
+
+      const myData = {
+        workerId,
+        workerName: name,
+        date,
+        workingHours,
+        inTime: outTime
+      };
+
+      let attendance = await AttendanceDB.findOne({ workerId, date });
+
+      if (attendance) {
+        await AttendanceDB.updateOne(
+          { _id: attendance._id }, // Faqat tegishli ma'lumotni yangilash
+          { $set: myData }
+        );
+        return res.status(200).json({ message: "Davomat yangilandi", attendance: { ...attendance._doc, ...myData } });
+      } else {
+        // Agar mavjud bo‘lmasa, yangi yozuv yaratish
+        attendance = new AttendanceDB(myData);
+        await attendance.save();
+        return res.status(201).json({ message: "Yangi davomat yaratildi", attendance });
+      }
     } catch (error) {
-      return response.error(res, error.message, error);
+      return res.status(500).json({ error: "Server xatosi", details: error.message });
     }
-  }
+  };
+
 
   async getAll(req, res) {
     try {

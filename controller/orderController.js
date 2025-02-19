@@ -18,7 +18,9 @@ class OrderController {
   }
 
   // Bitta buyurtmani olish
+  //   // Bitta buyurtmani olish
   static async getOrderById(req, res) {
+    console.log(req.params.id);
     try {
       const order = await Order.findById(req.params.id);
       if (!order) return response.notFound(res, "Buyurtma topilmadi");
@@ -27,6 +29,7 @@ class OrderController {
       return response.serverError(res, "Serverda xatolik yuz berdi", error);
     }
   }
+
 
   // Yangi buyurtma qo'shish
   static async createOrder(req, res) {
