@@ -70,6 +70,7 @@ class OrderService {
 
   static async updateOrder(req, res) {
     try {
+      let io = req.app.get("socket");
       if (!req.body || Object.keys(req.body).length === 0) {
         return res.status(400).json({ message: "No update data provided" });
       }
@@ -81,6 +82,8 @@ class OrderService {
       );
 
       if (!order) return Response.notFound(res, "Buxgalterga yuborilmadi.");
+
+      io.emit("updateOrder", order);
       return Response.success(res, "Buxgalterga yuborildi", order);
     } catch (error) {
       return Response.serverError(res, error.message);

@@ -63,7 +63,7 @@ router.put("/workingHours/:id", WorkingHoursController.updateWorkingHours);
 router.delete("/workingHours/:id", WorkingHoursController.deleteWorkingHours);
 
 // Expenses
-router.post("/expenses", ExpenseController.createExpense);
+router.get("/expenses", ExpenseController.createExpense);
 router.get("/expenses", ExpenseController.getAllExpenses);
 router.get("/expenses/:id", ExpenseController.getExpenseById);
 router.put("/expenses/:id", ExpenseController.updateExpense);
