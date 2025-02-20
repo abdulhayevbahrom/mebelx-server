@@ -42,8 +42,10 @@ const expenseSchema = new mongoose.Schema({
         type: String,
         enum: ["Naqd", "Karta orqali", "Bank orqali"],
     },
-
-});
+    relevantId: { // Kimga tegishli
+        type: mongoose.Schema.Types.ObjectId,
+    }
+}, { timestamps: true });
 
 const Expense = mongoose.model('expense', expenseSchema);
 module.exports = Expense;

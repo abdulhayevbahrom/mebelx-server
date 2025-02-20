@@ -1,4 +1,5 @@
 const Expense = require('../model/expense');
+const WorkersModel = require('../model/workersModel');
 const response = require('../utils/response'); // Assuming the response class is in the utils folder
 const moment = require('moment'); // For date manipulation
 
@@ -37,6 +38,50 @@ class ExpenseController {
             response.serverError(res, error.message);
         }
     }
+
+
+    // Expense ni relevantId va date bo'yicha olish
+    async getExpenseByRelevantId(req, res) {
+        try {
+            const { relevantId } = req.params;
+            let { date } = req.query;
+
+            // Agar date kelmasa, hozirgi oyni olamiz
+            if (!date) {
+                const now = new Date();
+                date = `${now.getFullYear()}-${(now.getMonth() + 1).toString().padStart(2, '0')}-01`;
+            }
+
+            // Kelayotgan yoki hozirgi oyni boshlanishi va tugashini aniqlash
+            const startOfMonth = new Date(date);
+            startOfMonth.setDate(1);
+            startOfMonth.setHours(0, 0, 0, 0);
+
+            const endOfMonth = new Date(startOfMonth);
+            endOfMonth.setMonth(endOfMonth.getMonth() + 1);
+            endOfMonth.setDate(0);
+            endOfMonth.setHours(23, 59, 59, 999);
+
+            // relevantId va date oralig'ida qidirish
+            const expenses = await Expense.find({
+                relevantId,
+                date: {
+                    $gte: startOfMonth,
+                    $lte: endOfMonth
+                }
+            });
+
+            if (!expenses.length) {
+                return response.notFound(res, 'Expenses not found for the given relevantId and date');
+            }
+
+            response.success(res, "Expenses fetched successfully", expenses);
+        } catch (error) {
+            response.serverError(res, error.message);
+        }
+    }
+
+
 
     // Expense ni yangilash
     async updateExpense(req, res) {
@@ -257,6 +302,65 @@ class ExpenseController {
             return response.serverError(res, "Xatolik yuz berdi", error.message);
         }
     };
+
+    async getExpensesBySalary(req, res) {
+        try {
+            const { year, month } = req.query;
+            if (!year || !month) {
+                return res.status(400).json({ message: "Yil va oy kerak" });
+            }
+
+            // Boshlanish va tugash sanalari
+            const startDate = new Date(`${year}-${month}-01`);
+            const endDate = new Date(startDate);
+            endDate.setMonth(endDate.getMonth() + 1);
+
+            // Ma'lumotlarni guruhlash va ism-familiyani qo'shish
+            const expenses = await Expense.aggregate([
+                {
+                    $match: {
+                        date: {
+                            $gte: startDate,
+                            $lt: endDate
+                        },
+                        category: { $in: ['Ish haqi', 'Avans'] }
+                    }
+                },
+                {
+                    $lookup: {
+                        from: "workers", // MongoDB dagi collection nomi (e'tibor bering: kichik harflar bilan yoziladi)
+                        localField: "relevantId",
+                        foreignField: "_id",
+                        as: "workerInfo"
+                    }
+                },
+                {
+                    $unwind: "$workerInfo"
+                },
+                {
+                    $addFields: {
+                        firstName: "$workerInfo.firstName",
+                        middleName: "$workerInfo.middleName",
+                        lastName: "$workerInfo.lastName"
+                    }
+                },
+                {
+                    $project: {
+                        workerInfo: 0 // workerInfo ni chiqarib tashlaymiz
+                    }
+                }
+            ]);
+
+            res.status(200).json({ innerData: expenses });
+        } catch (error) {
+            console.error(error);
+            res.status(500).json({ message: "Serverda xatolik yuz berdi" });
+        }
+    }
+
+
+
+
 
 }
 
