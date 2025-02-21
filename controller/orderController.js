@@ -5,7 +5,6 @@ const axios = require("axios");
 const FormData = require("form-data");
 const sharp = require("sharp");
 
-
 class OrderController {
   // Barcha buyurtmalarni olish
   static async getOrders(req, res) {
@@ -20,7 +19,6 @@ class OrderController {
   // Bitta buyurtmani olish
   //   // Bitta buyurtmani olish
   static async getOrderById(req, res) {
-    console.log(req.params.id);
     try {
       const order = await Order.findById(req.params.id);
       if (!order) return response.notFound(res, "Buyurtma topilmadi");
@@ -30,10 +28,10 @@ class OrderController {
     }
   }
 
-
   // Yangi buyurtma qo'shish
   static async createOrder(req, res) {
     try {
+      const io = req.app.get("socket");
       const data = JSON.parse(JSON.stringify(req.body));
       data.materials = JSON.parse(data.materials);
 
@@ -66,11 +64,10 @@ class OrderController {
       };
       data.customer.inn = +data.customer.inn || 0;
 
-
       const newOrder = await Order.create(data);
       if (!newOrder) return response.error(res, "Buyurtma yaratishda xatolik");
       response.created(res, "Buyurtma muvaffaqiyatli yaratildi", newOrder);
-
+      io.emit("newOrder", newOrder);
     } catch (error) {
       return response.error(res, "Buyurtma yaratishda xatolik", error);
     }
@@ -79,6 +76,7 @@ class OrderController {
   // Buyurtmani yangilash
   static async updateOrder(req, res) {
     try {
+      const io = req.app.get("socket");
       const updatedOrder = await Order.findByIdAndUpdate(
         req.params.id,
         req.body,
@@ -86,6 +84,8 @@ class OrderController {
       );
 
       if (!updatedOrder) return response.notFound(res, "Buyurtma topilmadi");
+      io.emit("newOrder", updatedOrder);
+
       return response.success(
         res,
         "Buyurtma muvaffaqiyatli yangilandi",
@@ -107,8 +107,6 @@ class OrderController {
     }
   }
 
-
-
   // Omborchi material berdi
   static giveMaterial = async (req, res) => {
     try {
@@ -120,20 +118,28 @@ class OrderController {
 
       // Omborda borligini tekshirish
       const storeMaterial = await StoreModel.findOne({ name: materialName });
-      if (!storeMaterial) return response.notFound(res, "Material omborda mavjud emas");
+      if (!storeMaterial)
+        return response.notFound(res, "Material omborda mavjud emas");
 
       // Ombordagi yetarlilikni tekshirish
       if (storeMaterial.quantity < givenQuantity) {
         return response.error(
           res,
           `Omborda yetarli material yo‘q! Hozirda faqat ${storeMaterial.quantity} ${storeMaterial.unit} mavjud.`,
-          { availableQuantity: storeMaterial.quantity, unit: storeMaterial.unit }
+          {
+            availableQuantity: storeMaterial.quantity,
+            unit: storeMaterial.unit,
+          }
         );
       }
 
       // Buyurtmadagi materialni topish
       const material = order.materials.find((m) => m.name === materialName);
-      if (!material) return response.notFound(res, "Buyurtma ichida bunday material mavjud emas");
+      if (!material)
+        return response.notFound(
+          res,
+          "Buyurtma ichida bunday material mavjud emas"
+        );
 
       // Ombordan material chiqarish
       storeMaterial.quantity -= givenQuantity;
@@ -145,14 +151,16 @@ class OrderController {
         materialName,
         givenQuantity,
         materialId: material?._id,
-        unit: material.unit || storeMaterial.unit // `unit` saqlanadi
+        unit: material.unit || storeMaterial.unit, // `unit` saqlanadi
       });
 
       await givenMaterial.save();
 
       return response.success(
         res,
-        `Material muvaffaqiyatli berildi: ${givenQuantity} ${material.unit || storeMaterial.unit}!`,
+        `Material muvaffaqiyatli berildi: ${givenQuantity} ${
+          material.unit || storeMaterial.unit
+        }!`,
         givenMaterial
       );
     } catch (error) {
@@ -165,24 +173,33 @@ class OrderController {
       const { orderId } = req.params;
 
       const order = await Order.findById(orderId);
-      if (!order) return res.status(404).json({ message: "Buyurtma topilmadi" });
+      if (!order)
+        return res.status(404).json({ message: "Buyurtma topilmadi" });
 
       const givenMaterials = await MaterialGiven.find({ orderId });
 
       // Umumiy kerak bo'lgan materiallar miqdorini topish
-      const totalRequired = order.materials.reduce((sum, material) => sum + material.quantity, 0);
+      const totalRequired = order.materials.reduce(
+        (sum, material) => sum + material.quantity,
+        0
+      );
 
       // Berilgan materiallarning umumiy miqdorini topish
-      const totalGiven = givenMaterials.reduce((sum, g) => sum + g.givenQuantity, 0);
+      const totalGiven = givenMaterials.reduce(
+        (sum, g) => sum + g.givenQuantity,
+        0
+      );
 
       // Umumiy foiz hisoblash
-      const percentage = totalRequired > 0 ? ((totalGiven / totalRequired) * 100).toFixed(2) : 0;
-      response.success(res, "Umumiy materiallar ta'minlanish foizi", { percentage });
+      const percentage =
+        totalRequired > 0 ? ((totalGiven / totalRequired) * 100).toFixed(2) : 0;
+      response.success(res, "Umumiy materiallar ta'minlanish foizi", {
+        percentage,
+      });
     } catch (error) {
       return response.serverError(res, "Server xatosi", error);
     }
   };
-
 
   // orderId va materialId bo‘yicha barcha mos keluvchi materiallarni olish
   static getMaterialById = async (req, res) => {
@@ -197,44 +214,43 @@ class OrderController {
       }
 
       // `givenQuantity` larni qo‘shib umumiy miqdorni hisoblash
-      const totalQuantity = givenMaterials.reduce((sum, item) => sum + item.givenQuantity, 0);
+      const totalQuantity = givenMaterials.reduce(
+        (sum, item) => sum + item.givenQuantity,
+        0
+      );
 
       res.status(200).json({
         message: "Ma'lumot topildi",
         totalQuantity, // Umumiy berilgan miqdor
         materials: givenMaterials, // Hammasini jo‘natish
-
       });
-
     } catch (error) {
       return response.serverError(res, "Server xatosi", error);
     }
   };
-
 
   // Buyurtmaga tegishli barcha materiallarni olish
   static async getAllMaterialById(req, res) {
     try {
       const { orderId } = req.params;
       const materials = await MaterialGiven.find({ orderId });
-      if (!materials.length) return response.notFound(res, "Materiallar topilmadi");
+      if (!materials.length)
+        return response.notFound(res, "Materiallar topilmadi");
       return response.success(res, "Materiallar topildi", materials);
     } catch (error) {
       return response.serverError(res, "Server xatosi", error);
     }
   }
 
-
   static async calculateDebt(req, res) {
     try {
-
       const totalDebt = await Order.aggregate([
         {
           $group: {
             _id: null,
-            totalDebt: { $sum: { $subtract: ["$budget", "$paid"] } }
-          }
-        }
+            totalDebt: { $sum: { $subtract: ["$budget", "$paid"] } },
+          },
+        },
       ]);
 
       const debtAmount = totalDebt.length > 0 ? totalDebt[0].totalDebt : 0;
@@ -249,10 +265,7 @@ class OrderController {
     } catch (error) {
       return response.serverError(res, "Server xatosi", error);
     }
-  };
-
+  }
 }
 
 module.exports = OrderController;
-
-
