@@ -16,8 +16,15 @@ const attendanceSchema = new Schema(
       foiz: { type: Number },
       loc: { type: String }
     },
-    inTime: { type: String, default: new Date().toISOString().slice(11, 16) }, // Kirish vaqti (HH:mm)
+    inTime: {
+      start: { type: String },
+      end: { type: String },
+      //=========night========
+      nightStart: { type: String },
+      nightEnd: { type: String },
+    }, // Kirish vaqti (HH:mm)
     workingHours: { type: String },
+    nightWorkingHours: { type: String },
   },
   {
     timestamps: true,
@@ -26,3 +33,5 @@ const attendanceSchema = new Schema(
 
 const Attendance = model("Attendance", attendanceSchema);
 module.exports = Attendance;
+
+
