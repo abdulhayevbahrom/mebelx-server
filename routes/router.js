@@ -64,16 +64,19 @@ router.put("/workingHours/:id", WorkingHoursController.updateWorkingHours);
 router.delete("/workingHours/:id", WorkingHoursController.deleteWorkingHours);
 
 // Expenses
-router.get("/expenses", ExpenseController.createExpense);
+router.post("/expenses", ExpenseController.createExpense);
 router.get("/expenses", ExpenseController.getAllExpenses);
 router.get("/expenses/:id", ExpenseController.getExpenseById);
 router.put("/expenses/:id", ExpenseController.updateExpense);
 router.delete("/expenses/:id", ExpenseController.deleteExpense);
 router.post("/expenses/period", ExpenseController.getExpensesByPeriod);
 router.post("/expenses/report", ExpenseController.getBalanceReport);
-router.get('/expenses/relevant/:relevantId', ExpenseController.getExpenseByRelevantId);
+router.get(
+  "/expenses/relevant/:relevantId",
+  ExpenseController.getExpenseByRelevantId
+);
 // /expenses?date=2025-02-02
-router.get('/expenses-by-salary', ExpenseController.getExpensesBySalary);
+router.get("/expenses-by-salary", ExpenseController.getExpensesBySalary);
 
 // Orders
 router.get("/order/", OrderController.getOrders);
@@ -93,8 +96,6 @@ router.get(
 );
 router.get("/order-debt", OrderController.calculateDebt);
 
-
-
 // New orders list
 router.post("/list", OrderService.createOrder);
 router.get("/list", OrderService.getOrders);
@@ -109,8 +110,6 @@ router.delete(
 );
 router.delete("/list/:orderId/materials", OrderService.deleteAllMaterials);
 router.post("/list/:orderId/materials", OrderService.createMaterial);
-
-
 
 router.get("/balance", BalanceController.getBalance);
 router.post("/balance/update", BalanceController.updateBalance);

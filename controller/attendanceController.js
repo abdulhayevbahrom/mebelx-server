@@ -4,9 +4,11 @@ const response = require("../utils/response");
 class AttendanceController {
   async create(req, res) {
     try {
+      let io = req.app.get("socket");
       const result = await AttendanceDB.create(req.body);
 
       if (!result) return response.error(res, "Ma'lumot kirishda xatolik");
+      io.emit("attendance_update", result);
       return response.success(res, "Saqlandi", result);
     } catch (error) {
       return response.error(res, error.message, error);
@@ -15,14 +17,15 @@ class AttendanceController {
 
   updateAttendance = async (req, res) => {
     try {
-      const { workerId, name, date, workingHours, outTime } = req.body;
+      let io = req.app.get("socket");
+      const { workerId, name, date, workingHours, inTime } = req.body;
 
       const myData = {
         workerId,
         workerName: name,
         date,
         workingHours,
-        inTime: outTime
+        inTime,
       };
 
       let attendance = await AttendanceDB.findOne({ workerId, date });
@@ -32,18 +35,26 @@ class AttendanceController {
           { _id: attendance._id }, // Faqat tegishli ma'lumotni yangilash
           { $set: myData }
         );
-        return res.status(200).json({ message: "Davomat yangilandi", attendance: { ...attendance._doc, ...myData } });
+        io.emit("attendance_update", { ...attendance._doc, ...myData });
+        return res.status(200).json({
+          message: "Davomat yangilandi",
+          attendance: { ...attendance._doc, ...myData },
+        });
       } else {
         // Agar mavjud bo‘lmasa, yangi yozuv yaratish
         attendance = new AttendanceDB(myData);
         await attendance.save();
-        return res.status(201).json({ message: "Yangi davomat yaratildi", attendance });
+        io.emit("attendance_update", attendance);
+        return res
+          .status(201)
+          .json({ message: "Yangi davomat yaratildi", attendance });
       }
     } catch (error) {
-      return res.status(500).json({ error: "Server xatosi", details: error.message });
+      return res
+        .status(500)
+        .json({ error: "Server xatosi", details: error.message });
     }
   };
-
 
   async getAll(req, res) {
     try {
@@ -92,7 +103,8 @@ class AttendanceController {
         createdAt: { $gte: startOfMonth, $lte: endOfMonth },
       });
 
-      if (!result.length) return response.notFound(res, "Ma'lumotlar topilmadi");
+      if (!result.length)
+        return response.notFound(res, "Ma'lumotlar topilmadi");
 
       return response.success(res, "Barcha davomatlar", result);
     } catch (error) {
