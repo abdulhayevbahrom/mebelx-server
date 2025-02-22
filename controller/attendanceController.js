@@ -65,6 +65,23 @@ class AttendanceController {
     }
   }
 
+  async updateByAttendance(req, res) {
+    try {
+      const worker = await AttendanceDB.findByIdAndUpdate(
+        req.params.id,
+        req.body,
+        {
+          new: true,
+        }
+      );
+
+      if (!worker) return response.error(res, "Davomat yangilashda xatolik");
+      response.success(res, "Davomat yangilandi", worker);
+    } catch (err) {
+      response.serverError(res, err.message, err);
+    }
+  }
+
   async getMonthlyAttendance(req, res) {
     try {
       const { year, month } = req.params;
