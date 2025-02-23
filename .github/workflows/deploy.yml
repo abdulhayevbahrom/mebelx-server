@@ -1,0 +1,67 @@
+name: Deploy to Ubuntu Server on push
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    env:
+      SERVER_IP: 37.60.253.214
+      SSH_USER: root
+      APP_DIR: /root/app/server/mebelx
+      PORT: 8088
+      NODE_ENV: production
+      PM2_NAME: mebelx
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Set up SSH
+        uses: webfactory/ssh-agent@v0.5.3
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Add server to known_hosts
+        run: ssh-keyscan -H ${{ env.SERVER_IP }} >> ~/.ssh/known_hosts
+
+      - name: Ensure directory exists and sync files
+        run: |
+          ssh ${{ env.SSH_USER }}@${{ env.SERVER_IP }} "mkdir -p ${{ env.APP_DIR }}"
+          rsync -avz ./ ${{ env.SSH_USER }}@${{ env.SERVER_IP }}:${{ env.APP_DIR }}
+
+      - name: Cache node modules
+        uses: actions/cache@v2
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
+      - name: Install dependencies
+        run: ssh ${{ env.SSH_USER }}@${{ env.SERVER_IP }} "cd ${{ env.APP_DIR }} && npm install"
+
+      - name: Append PORT environment variable to .env file
+        run: ssh ${{ env.SSH_USER }}@${{ env.SERVER_IP }} "echo -e '\nPORT=${{ env.PORT }}' >> ${{ env.APP_DIR }}/.env"
+
+      - name: Check and restart or start pm2 process
+        run: |
+          ssh ${{ env.SSH_USER }}@${{ env.SERVER_IP }} << 'EOF'
+            cd ${{ env.APP_DIR }}
+            if pm2 list | grep -q ${{env.PM2_NAME}}; then
+              pm2 restart ${{env.PM2_NAME}} --update-env
+            else
+              if lsof -Pi :${{env.PORT}} -sTCP:LISTEN -t >/dev/null ; then
+                echo "Port ${{env.PORT}} is already in use"
+              else
+                pm2 start npm --name ${{env.PM2_NAME}} -- run start
+              fi
+            fi
+          EOF
+
+      - name: NODE_ENV environment variable to .env file for production
+        run: ssh ${{ env.SSH_USER }}@${{ env.SERVER_IP }} "echo -e '\nNODE_ENV=${{ env.NODE_ENV }}' >> ${{ env.APP_DIR }}/.env"
