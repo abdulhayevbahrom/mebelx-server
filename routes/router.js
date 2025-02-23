@@ -43,6 +43,7 @@ router.get(
 );
 router.post("/attendance/create", attendanceController.create);
 router.post("/attendance/update", attendanceController.updateAttendance);
+router.put("/attendance/:id", attendanceController.updateByAttendance);
 
 // STORE
 router.get("/store/all", storeController.getStore);
