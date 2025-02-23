@@ -84,7 +84,7 @@ class OrderController {
       );
 
       if (!updatedOrder) return response.notFound(res, "Buyurtma topilmadi");
-      io.emit("newOrder", updatedOrder);
+      io.emit("updateOrder", updatedOrder);
 
       return response.success(
         res,
@@ -99,14 +99,18 @@ class OrderController {
   // Buyurtmani o‘chirish
   static async deleteOrder(req, res) {
     try {
+      const io = req.app.get("socket");
       const deletedOrder = await Order.findByIdAndDelete(req.params.id);
-      if (!deletedOrder) return response.notFound(res, "Buyurtma topilmadi");
+      if (!deletedOrder)
+        return response.notFound(res, "Buyurtma topilmadi", deletedOrder);
+      io.emit("newOrder", deletedOrder);
       return response.success(res, "Buyurtma muvaffaqiyatli o'chirildi");
     } catch (error) {
       return response.serverError(res, "Serverda xatolik yuz berdi", error);
     }
   }
 
+  // Omborchi material berdi
   // Omborchi material berdi
   static giveMaterial = async (req, res) => {
     try {
@@ -242,26 +246,64 @@ class OrderController {
     }
   }
 
+  // static async calculateDebt(req, res) {
+  //   try {
+  //     const totalDebt = await Order.aggregate([
+  //       {
+  //         $group: {
+  //           _id: null,
+  //           totalDebt: { $sum: { $subtract: ["$budget", "$paid"] } },
+  //         },
+  //       },
+  //     ]);
+
+  //     const debtAmount = totalDebt.length > 0 ? totalDebt[0].totalDebt : 0;
+  //     // Pul birligi formati bilan chiqarish
+  //     const formattedDebt = new Intl.NumberFormat("uz-UZ", {
+  //       style: "currency",
+  //       currency: "UZS",
+  //       minimumFractionDigits: 0,
+  //     }).format(debtAmount);
+
+  //     return response.success(res, "Umumiy qarz:", formattedDebt);
+  //   } catch (error) {
+  //     return response.serverError(res, "Server xatosi", error);
+  //   }
+  // }
   static async calculateDebt(req, res) {
     try {
       const totalDebt = await Order.aggregate([
         {
+          $match: { isType: true }, // Faqat isType true bo'lgan mijozlarni tanlash
+        },
+        {
           $group: {
             _id: null,
-            totalDebt: { $sum: { $subtract: ["$budget", "$paid"] } },
+            totalBudget: { $sum: "$budget" },
+            totalPaid: { $sum: "$paid" },
+          },
+        },
+        {
+          $project: {
+            _id: 0,
+            totalDebt: { $subtract: ["$totalBudget", "$totalPaid"] }, // Qarzni hisoblash
           },
         },
       ]);
 
       const debtAmount = totalDebt.length > 0 ? totalDebt[0].totalDebt : 0;
+
       // Pul birligi formati bilan chiqarish
       const formattedDebt = new Intl.NumberFormat("uz-UZ", {
         style: "currency",
         currency: "UZS",
         minimumFractionDigits: 0,
       }).format(debtAmount);
-
-      return response.success(res, "Umumiy qarz:", formattedDebt);
+      return response.success(
+        res,
+        "isType: true bo'lgan mijozlarning umumiy qarzi:",
+        formattedDebt
+      );
     } catch (error) {
       return response.serverError(res, "Server xatosi", error);
     }

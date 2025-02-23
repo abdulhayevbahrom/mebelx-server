@@ -5,6 +5,7 @@ const mongoose = require("mongoose");
 class StoreController {
   async createStore(req, res) {
     try {
+      let io = req.app.get("socket");
       const data = req.body;
       const store = await storeDB.create({
         name: data.name,
@@ -18,6 +19,7 @@ class StoreController {
       if (!store) return response.error(res, "Mahsulot qo'shilmadi");
 
       response.created(res, "Mahsulot qo'shildi", store);
+      io.emit("newStore", store);
     } catch (err) {
       response.serverError(res, err.message, err);
     }
@@ -25,6 +27,7 @@ class StoreController {
 
   async updateStore(req, res) {
     try {
+      let io = req.app.get("socket");
       const { id } = req.params;
       const data = req.body;
 
@@ -39,8 +42,8 @@ class StoreController {
       store.supplier = data.supplier || store.supplier;
       await store.save();
 
-
       response.success(res, "Mahsulot yangilandi", store);
+      io.emit("newStore", store);
     } catch (err) {
       response.serverError(res, err.message, err);
     }
@@ -58,9 +61,11 @@ class StoreController {
 
   async deleteStore(req, res) {
     try {
+      let io = req.app.get("socket");
       const store = await storeDB.findByIdAndDelete(req.params.id);
       if (!store) return response.error(res, "Mahsulot o'chirilishda xatolik");
       response.success(res, "Mahsulot o'chirildi", store);
+      io.emit("newStore", store);
     } catch (err) {
       response.serverError(res, err.message, err);
     }
@@ -78,11 +83,13 @@ class StoreController {
 
   async decrementQuantity(req, res) {
     try {
+      let io = req.app.get("socket");
       const store = await storeDB.findByIdAndUpdate(req.params.id, {
         $inc: { quantity: -1 },
       });
       if (!store) return response.notFound(res, "Mahsulot topilmadi");
       response.success(res, "Mahsulot omborda ayirildi", store);
+      io.emit("newStore", store);
     } catch (err) {
       response.serverError(res, err.message, err);
     }
@@ -101,9 +108,9 @@ class StoreController {
     }
   }
 
-
   async storeUpdateMany(req, res) {
     try {
+      let io = req.app.get("socket");
       const updates = req.body; // array keladi
 
       if (!Array.isArray(updates) || updates.length === 0)
@@ -150,12 +157,12 @@ class StoreController {
       }
 
       response.success(res, "Mahsulotlar omborga qo‘shildi yoki yangilandi!");
+      io.emit("newStore", store);
     } catch (err) {
       console.error(err);
       response.serverError(res, err.message, err);
     }
   }
-
 }
 
 module.exports = new StoreController();

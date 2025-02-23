@@ -21,9 +21,7 @@ class WorkerController {
 
   async createWorker(req, res) {
     try {
-      // let io = req.app.get("socket");
-
-      // io.emit("new_worker", "salomaat");
+      let io = req.app.get("socket");
 
       const data = JSON.parse(JSON.stringify(req.body));
 
@@ -56,6 +54,7 @@ class WorkerController {
 
       const worker = await workersDB.create(data);
       if (!worker) return response.error(res, "Ishchi qo'shilmadi");
+      io.emit("new_worker", worker);
       response.created(res, "Ishchi yaratildi", worker);
     } catch (err) {
       response.serverError(res, err.message, err);
@@ -99,9 +98,11 @@ class WorkerController {
 
   async deleteWorker(req, res) {
     try {
+      let io = req.app.get("socket");
       const worker = await workersDB.findByIdAndDelete(req.params.id);
       if (!worker) return response.error(res, "Ishchi o'chirilmadi");
       response.success(res, "Ishchi o'chirildi");
+      io.emit("new_worker", worker);
     } catch (err) {
       response.serverError(res, err.message, err);
     }
@@ -109,6 +110,7 @@ class WorkerController {
 
   async updateWorker(req, res) {
     try {
+      let io = req.app.get("socket");
       const worker = await workersDB.findByIdAndUpdate(
         req.params.id,
         req.body,
@@ -118,6 +120,7 @@ class WorkerController {
       );
       if (!worker) return response.error(res, "Ishchi yangilashda xatolik");
       response.success(res, "Ishchi yangilandi", worker);
+      io.emit("new_worker", worker);
     } catch (err) {
       response.serverError(res, err.message, err);
     }

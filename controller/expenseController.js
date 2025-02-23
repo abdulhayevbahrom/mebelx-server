@@ -42,15 +42,16 @@ class ExpenseController {
   // Expense ni yangilash
   async updateExpense(req, res) {
     try {
+      let io = req.app.get("socket");
       const { name, amount, amountType, description } = req.body;
       const updatedExpense = await Expense.findByIdAndUpdate(
         req.params.id,
         { name, amount, amountType, description },
         { new: true }
       );
-      if (!updatedExpense) {
-        return response.notFound(res, "Expense not found");
-      }
+      if (!updatedExpense) return response.notFound(res, "Expense not found");
+      io.emit("newExpense", updatedExpense);
+
       response.success(res, "Expense updated successfully", updatedExpense);
     } catch (error) {
       response.error(res, error.message);
@@ -60,10 +61,10 @@ class ExpenseController {
   // Expense ni o'chirish
   async deleteExpense(req, res) {
     try {
+      let io = req.app.get("socket");
       const deletedExpense = await Expense.findByIdAndDelete(req.params.id);
-      if (!deletedExpense) {
-        return response.notFound(res, "Expense not found");
-      }
+      if (!deletedExpense) return response.notFound(res, "Expense not found");
+      io.emit("newExpense", deletedExpense);
       response.success(res, "Expense deleted successfully");
     } catch (error) {
       response.serverError(res, error.message);
@@ -121,11 +122,10 @@ class ExpenseController {
         },
       ];
 
-
       const results = await Expense.aggregate(pipeline);
 
       // Agar tanlangan davrda hujjat topilmasa
-      if (!results, !results[0], !results[0].all.length) {
+      if ((!results, !results[0], !results[0].all.length)) {
         return response.notFound(res, "No expenses found for the given period");
       }
 
@@ -225,15 +225,14 @@ class ExpenseController {
 
       const formatUzbekDate = (date) => {
         const momentDate = moment(date, "YYYY-MM-DD");
-        return `${momentDate.format("D")} -${uzMonthMapping[momentDate.format("MM")]
-          } `;
+        return `${momentDate.format("D")} -${
+          uzMonthMapping[momentDate.format("MM")]
+        } `;
       };
 
       const formattedPeriod = `${formatUzbekDate(
         startOfPeriod
-      )
-        } - ${formatUzbekDate(endOfPeriod)} `;
-
+      )} - ${formatUzbekDate(endOfPeriod)} `;
 
       // MongoDB'dan daromad, chiqim va kunlik hisobotlarni olish
       const [incomeResult, outgoingResult, dailyReport] = await Promise.all([
@@ -303,7 +302,7 @@ class ExpenseController {
       const { date } = req.query; // Front-enddan kelayotgan sana
 
       if (!date) {
-        return response.badRequest(res, 'Date is required');
+        return response.badRequest(res, "Date is required");
       }
 
       // Kelayotgan sanani boshlanishi va tugashini aniqlash
@@ -321,12 +320,15 @@ class ExpenseController {
         relevantId,
         date: {
           $gte: startOfMonth,
-          $lte: endOfMonth
-        }
+          $lte: endOfMonth,
+        },
       });
 
       if (!expenses.length) {
-        return response.notFound(res, 'Expenses not found for the given relevantId and date');
+        return response.notFound(
+          res,
+          "Expenses not found for the given relevantId and date"
+        );
       }
 
       response.success(res, "Expenses fetched successfully", expenses);
@@ -334,7 +336,6 @@ class ExpenseController {
       response.serverError(res, error.message);
     }
   }
-
 
   async getExpensesBySalary(req, res) {
     try {
@@ -352,34 +353,34 @@ class ExpenseController {
           $match: {
             date: {
               $gte: startDate,
-              $lt: endDate
+              $lt: endDate,
             },
-            category: { $in: ['Ish haqi', 'Avans'] }
-          }
+            category: { $in: ["Ish haqi", "Avans"] },
+          },
         },
         {
           $lookup: {
             from: "workers", // MongoDB dagi collection nomi (e'tibor bering: kichik harflar bilan yoziladi)
             localField: "relevantId",
             foreignField: "_id",
-            as: "workerInfo"
-          }
+            as: "workerInfo",
+          },
         },
         {
-          $unwind: "$workerInfo"
+          $unwind: "$workerInfo",
         },
         {
           $addFields: {
             firstName: "$workerInfo.firstName",
             middleName: "$workerInfo.middleName",
-            lastName: "$workerInfo.lastName"
-          }
+            lastName: "$workerInfo.lastName",
+          },
         },
         {
           $project: {
-            workerInfo: 0 // workerInfo ni chiqarib tashlaymiz
-          }
-        }
+            workerInfo: 0, // workerInfo ni chiqarib tashlaymiz
+          },
+        },
       ]);
       res.status(200).json({ innerData: expenses });
     } catch (error) {
