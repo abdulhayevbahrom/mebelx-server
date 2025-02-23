@@ -17,8 +17,8 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
 const corsOptions = {
-  // origin: ["http://localhost:3000", "http://localhost:3001"],
-  origin: "*",
+  origin: ["http://localhost:3000", "https://mebelx.vercel.app"],
+  // origin: "*",
   methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
   credentials: true,
 };
