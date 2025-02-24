@@ -29,46 +29,118 @@ class OrderController {
   }
 
   // Yangi buyurtma qo'shish
+  // static async createOrder(req, res) {
+  //   try {
+  //     console.log(req.body);
+  //     const io = req.app.get("socket");
+  //     const data = JSON.parse(JSON.stringify(req.body));
+  //     data.materials = JSON.parse(data.materials);
+
+  //     if (req.file) {
+  //       const formData = new FormData();
+  //       const processedImage = await sharp(req.file.buffer)
+  //         .resize({ width: 500, height: 500, fit: "cover" }) // 3x4 format
+  //         .jpeg({ quality: 90 }) // Sifatni saqlash
+  //         .toBuffer();
+
+  //       formData.append("image", processedImage.toString("base64"));
+
+  //       let api = `${process.env.IMAGE_BB_API_URL}?key=${process.env.IMAGE_BB_API_KEY}`;
+  //       const response = await axios.post(api, formData, {
+  //         headers: { "Content-Type": "multipart/form-data" },
+  //       });
+
+  //       if (response?.data?.data?.url) {
+  //         data?.image = response.data.data.url;
+  //       }
+  //     }
+
+  //     data.budget = +data.budget;
+  //     data.paid = +data.paid;
+  //     data.estimatedDays = +data.estimatedDays;
+  //     data.dimensions = {
+  //       length: +data.dimensions.length,
+  //       width: +data.dimensions.width,
+  //       height: +data.dimensions.height,
+  //     };
+  //     data.customer.inn = +data.customer.inn || 0;
+  //     console.log(data);
+
+  //     const newOrder = await Order.create(data);
+  //     if (!newOrder) return response.error(res, "Buyurtma yaratishda xatolik");
+  //     response.created(res, "Buyurtma muvaffaqiyatli yaratildi", newOrder);
+  //     io.emit("newOrder", newOrder);
+  //   } catch (error) {
+  //     return response.error(res, "Buyurtma yaratishda xatolik", error);
+  //   }
+  // }
+
   static async createOrder(req, res) {
     try {
       const io = req.app.get("socket");
       const data = JSON.parse(JSON.stringify(req.body));
-      data.materials = JSON.parse(data.materials);
 
-      if (req.file) {
-        const formData = new FormData();
-        const processedImage = await sharp(req.file.buffer)
-          .resize({ width: 500, height: 500, fit: "cover" }) // 3x4 format
-          .jpeg({ quality: 90 }) // Sifatni saqlash
-          .toBuffer();
-
-        formData.append("image", processedImage.toString("base64"));
-
-        let api = `${process.env.IMAGE_BB_API_URL}?key=${process.env.IMAGE_BB_API_KEY}`;
-        const response = await axios.post(api, formData, {
-          headers: { "Content-Type": "multipart/form-data" },
-        });
-
-        if (response?.data?.data?.url) {
-          data.image = response.data.data.url;
-        }
-      }
-
-      data.budget = +data.budget;
+      // `paid`, `estimatedDays` ni raqamga aylantirish
       data.paid = +data.paid;
       data.estimatedDays = +data.estimatedDays;
-      data.dimensions = {
-        length: +data.dimensions.length,
-        width: +data.dimensions.width,
-        height: +data.dimensions.height,
-      };
-      data.customer.inn = +data.customer.inn || 0;
 
+      // **Manzilni qayta ishlash**
+      data.address = {
+        region: data.address.region,
+        district: data.address.district,
+        street: data.address.street,
+        location: data.address.location,
+      };
+
+      // **Saved Furniture ma'lumotlarini qayta ishlash**
+      if (data.savedFurniture && data.savedFurniture.length > 0) {
+        for (let item of data.savedFurniture) {
+          if (item.images && item.images.length > 0) {
+            const uploadedImages = [];
+
+            // Har bir rasmni ImageBB'ga yuklash
+            for (let image of item.images) {
+              const formData = new FormData();
+              formData.append("image", image);
+
+              const api = `${process.env.IMAGE_BB_API_URL}?key=${process.env.IMAGE_BB_API_KEY}`;
+              const response = await axios.post(api, formData, {
+                headers: formData.getHeaders(),
+              });
+
+              // Agar yuklangan rasm URL'i mavjud bo'lsa, qo'shish
+              if (response?.data?.data?.url) {
+                uploadedImages.push(response.data.data.url);
+              }
+            }
+
+            // Qayta ishlangan URL'larni `images` sifatida yozib qo'yish
+            item.images = uploadedImages;
+          }
+        }
+
+        // `savedFurniture` ni to'g'ri formatda qayta ishlash
+        data.orders = data.savedFurniture.map((item) => ({
+          name: item.name,
+          budget: item.budget,
+          dimensions: {
+            length: +item.dimensions.length,
+            width: +item.dimensions.width,
+            height: +item.dimensions.height,
+          },
+          images: item.images, // ImageBB'dan kelgan URL'lar yoziladi
+        }));
+      }
+
+      // Yangi buyurtmani yaratish
+      console.log(data);
       const newOrder = await Order.create(data);
       if (!newOrder) return response.error(res, "Buyurtma yaratishda xatolik");
+
       response.created(res, "Buyurtma muvaffaqiyatli yaratildi", newOrder);
       io.emit("newOrder", newOrder);
     } catch (error) {
+      console.error(error);
       return response.error(res, "Buyurtma yaratishda xatolik", error);
     }
   }
@@ -162,8 +234,7 @@ class OrderController {
 
       return response.success(
         res,
-        `Material muvaffaqiyatli berildi: ${givenQuantity} ${
-          material.unit || storeMaterial.unit
+        `Material muvaffaqiyatli berildi: ${givenQuantity} ${material.unit || storeMaterial.unit
         }!`,
         givenMaterial
       );

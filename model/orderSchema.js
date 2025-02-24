@@ -37,7 +37,7 @@ const CustomerSchema = new mongoose.Schema({
   phone: { type: String, required: true },
   companyName: { type: String }, // Faqat yuridik shaxslar uchun
   director: { type: String },
-  inn: { type: Number },
+  inn: { type: String },
 });
 
 // Order Address Schema (Buyurtma manzili)
@@ -48,32 +48,37 @@ const OrderAddressSchema = new mongoose.Schema({
   location: { type: String, required: true },
 });
 
+// Order Address Schema (Buyurtma manzili)
+const OrderSchema = new mongoose.Schema({
+  name: { type: String, required: true },
+  dimensions: {
+    length: { type: Number, required: true },
+    width: { type: Number, required: true },
+    height: { type: Number, required: true },
+  },
+  budget: { type: Number },
+  image: { type: String },
+  materials: [MaterialSchema],
+});
+
 // Order Schema (Buyurtma ma'lumotlari)
-const OrderSchema = new mongoose.Schema(
+const InfoSchema = new mongoose.Schema(
   {
-    name: { type: String, required: true },
-    budget: { type: Number, required: true },
     paid: { type: Number, required: true },
     date: { type: Date, required: true },
     estimatedDays: { type: Number, required: true },
-    dimensions: {
-      length: { type: Number, required: true },
-      width: { type: Number, required: true },
-      height: { type: Number, required: true },
-    },
-    image: { type: String },
     customer: { type: CustomerSchema, required: true },
-    materials: [MaterialSchema],
     address: { type: OrderAddressSchema, required: true },
     isType: { type: Boolean, default: true },
-
+    description: { type: String },
+    orders: { type: OrderSchema, default: true }
   },
   { timestamps: true }
 );
 
 // Model yaratish
 const MaterialGiven = mongoose.model("MaterialGiven", MaterialGivenSchema);
-const Order = mongoose.model("Order", OrderSchema);
+const Order = mongoose.model("Order", InfoSchema);
 
 // Eksport qilish
 module.exports = { Order, MaterialGiven };
