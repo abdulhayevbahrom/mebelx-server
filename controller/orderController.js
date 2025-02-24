@@ -308,6 +308,23 @@ class OrderController {
       return response.serverError(res, "Server xatosi", error);
     }
   }
+
+  // get debtor orders
+  static async getDebtorOrders(req, res) {
+    try {
+      console.log("getDebtorOrders");
+      // const orders = await Order.find({
+      //   isType: true,
+      //   $expr: { $gt: ["$totalBudget", "$totalPaid"] },
+      // });
+      const orders = await Order.find();
+
+      return response.success(res, "Orders retrieved successfully", orders);
+    } catch (error) {
+      console.log(error);
+      return response.serverError(res, "Failed to retrieve orders", error);
+    }
+  }
 }
 
 module.exports = OrderController;

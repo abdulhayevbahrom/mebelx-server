@@ -95,6 +95,7 @@ router.get(
   OrderController.getAllMaterialById
 );
 router.get("/order-debt", OrderController.calculateDebt);
+router.get("/ordergetdebtors", OrderController.getDebtorOrders);
 
 // New orders list
 router.post("/list", OrderService.createOrder);
