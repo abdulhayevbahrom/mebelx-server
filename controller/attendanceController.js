@@ -18,7 +18,7 @@ class AttendanceController {
   updateAttendance = async (req, res) => {
     try {
       let io = req.app.get("socket");
-      const { workerId, name, date, workingHours, inTime } = req.body;
+      const { nightWorkingHours, prosent, location, workerId, name, date, workingHours, inTime } = req.body;
 
       const myData = {
         workerId,
@@ -26,6 +26,12 @@ class AttendanceController {
         date,
         workingHours,
         inTime,
+        nightWorkingHours,
+        location,
+        status: {
+          foiz: prosent,
+          loc: location
+        },
       };
 
       let attendance = await AttendanceDB.findOne({ workerId, date });
