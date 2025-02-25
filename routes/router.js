@@ -81,7 +81,11 @@ router.get("/expenses-by-salary", ExpenseController.getExpensesBySalary);
 // Orders
 router.get("/order/", OrderController.getOrders);
 router.get("/order/:id", OrderController.getOrderById);
-router.post("/order/", upload2.array("images", 10), OrderController.createOrder);
+router.post(
+  "/order/",
+  upload2.array("images", 10),
+  OrderController.createOrder
+);
 router.put("/order/:id", OrderController.updateOrder);
 router.delete("/order/:id", OrderController.deleteOrder);
 router.post("/order/giveMaterial", OrderController.giveMaterial);
@@ -95,6 +99,7 @@ router.get(
   OrderController.getAllMaterialById
 );
 router.get("/order-debt", OrderController.calculateDebt);
+router.get("/ordergetdebtors", OrderController.getDebtorOrders);
 
 // New orders list
 router.post("/list", OrderService.createOrder);

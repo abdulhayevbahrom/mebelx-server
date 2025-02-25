@@ -6,7 +6,11 @@ const MaterialSchema = new mongoose.Schema({
   quantity: { type: Number, required: true },
   price: { type: Number, required: true },
   unit: { type: String, required: true },
-  materialID: { type: mongoose.Schema.Types.ObjectId, ref: "WarehouseItem", required: true },
+  materialID: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "WarehouseItem",
+    required: true,
+  },
 });
 
 // Material Given Schema (Ombordan chiqarilgan materiallar)
@@ -22,7 +26,8 @@ const MaterialGivenSchema = new mongoose.Schema({
   date: { type: Date, default: Date.now }, // Qachon berilganligi
   materialId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: "WarehouseItem", required: true
+    ref: "WarehouseItem",
+    required: true,
   },
 });
 
@@ -71,7 +76,7 @@ const InfoSchema = new mongoose.Schema(
     address: { type: OrderAddressSchema, required: true },
     isType: { type: Boolean, default: true },
     description: { type: String },
-    orders: { type: OrderSchema, default: true }
+    orders: { type: [OrderSchema], default: [] }, // Array qilib belgilash kerak
   },
   { timestamps: true }
 );
