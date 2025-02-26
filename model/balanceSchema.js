@@ -2,7 +2,17 @@ const mongoose = require("mongoose");
 
 const balanceSchema = new mongoose.Schema(
     {
-        balance: {
+        dollarBalance: {
+            type: Number,
+            required: true,
+            default: 0,
+        },
+        bankTransferBalance: {
+            type: Number,
+            required: true,
+            default: 0,
+        },
+        cashBalance: {
             type: Number,
             required: true,
             default: 0,

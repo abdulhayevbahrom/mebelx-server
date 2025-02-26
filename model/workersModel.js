@@ -18,7 +18,7 @@ const workersModel = new mongoose.Schema(
       type: String,
       enum: [
         "manager",
-        "seller",
+        "distributor",
         "director",
         "accountant",
         "warehouseman",

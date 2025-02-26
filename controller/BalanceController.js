@@ -19,39 +19,62 @@ class BalanceController {
   }
 
   // Pul qo‘shish yoki ayirish
+  // Add or Subtract Balance
   static async updateBalance(req, res) {
     try {
       let io = req.app.get("socket");
-      const { amount, type } = req.body;
+      const { amount, type, payType } = req.body;
+
+      // Validate amount
       if (!amount || amount <= 0) {
-        return Response.error(res, "Noto‘g‘ri miqdor kiritildi");
+        return Response.error(res, "Invalid amount entered");
       }
 
-      let balance = await Balance.findOne();
-      if (!balance) {
-        balance = new Balance();
-      }
-
-      if (type === "add") {
-        balance.balance += amount;
-      } else if (type === "subtract") {
-        if (balance.balance < amount) {
-          return Response.error(res, "Balans yetarli emas");
-        }
-        balance.balance -= amount;
+      // Determine which balance field to update based on payType
+      let balanceField;
+      if (payType === "dollar") {
+        balanceField = "dollarBalance";
+      } else if (payType === "bankTransfer") {
+        balanceField = "bankTransferBalance";
+      } else if (payType === "cash") {
+        balanceField = "cashBalance";
       } else {
-        return Response.error(res, "Noto‘g‘ri operatsiya turi");
+        return Response.error(res, "Invalid payment type");
       }
 
-      await balance.save();
-      io.emit("balance", balance.balance);
-      return Response.success(res, "Balans yangilandi", {
-        balance: balance.balance,
+      // Construct update query
+      let updateQuery;
+      if (type === "add") {
+        updateQuery = { $inc: { [balanceField]: amount } };
+      } else if (type === "subtract") {
+        // Check if there is enough balance before subtracting
+        const balance = await Balance.findOne();
+        if (!balance || balance[balanceField] < amount) {
+          return Response.error(res, "Insufficient balance");
+        }
+        updateQuery = { $inc: { [balanceField]: -amount } };
+      } else {
+        return Response.error(res, "Invalid operation type");
+      }
+
+      // Update balance using findOneAndUpdate
+      const updatedBalance = await Balance.findOneAndUpdate(
+        {},
+        updateQuery,
+        { new: true, upsert: true }
+      );
+
+      io.emit("balance", updatedBalance);
+
+      return Response.success(res, "Balance updated successfully", {
+        balance: updatedBalance,
       });
     } catch (error) {
-      return Response.serverError(res, "Xatolik yuz berdi", error);
+      return Response.serverError(res, "An error occurred", error);
     }
   }
+
+
 }
 
 module.exports = BalanceController;

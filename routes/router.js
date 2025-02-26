@@ -15,7 +15,7 @@ const OrderController = require("../controller/orderController");
 const BalanceController = require("../controller/BalanceController");
 const storeController = require("../controller/storeController");
 const storeValidation = require("../validation/storeValidation");
-
+const optionController = require('../controller/shopsController');
 // // ADMIN
 // router.get("/admin/all", adminController.getAdmins);
 // router.post("/admin/create", adminValidation, adminController.createAdmin);
@@ -113,10 +113,19 @@ router.delete(
   "/list/:orderId/materials/:materialId",
   OrderService.deleteMaterialById
 );
+router.put("/list/:orderId/materials/:materialId", OrderService.updateMaterialById);
 router.delete("/list/:orderId/materials", OrderService.deleteAllMaterials);
 router.post("/list/:orderId/materials", OrderService.createMaterial);
 
 router.get("/balance", BalanceController.getBalance);
 router.post("/balance/update", BalanceController.updateBalance);
+
+
+// shops
+router.get('/shops', optionController.getAllOptions);
+router.post('/shops', optionController.addOption);
+router.delete('/shops/:id', optionController.deleteOption);
+
+
 
 module.exports = router;

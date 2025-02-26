@@ -120,7 +120,42 @@ class OrderService {
       return Response.serverError(res, "Failed to delete material", error);
     }
   }
+  // Controllerda yangilash
+  static async updateMaterialById(req, res) {
+    try {
+      const io = req.app.get("socket");
+      const { orderId, materialId } = req.params;
+      const updateData = req.body;
 
+      console.log({
+        orderId,
+        materialId,
+        updateData
+      });
+
+      // `materials` ichidagi aniq `productId` ni yangilash uchun indeksdan foydalanamiz
+      const order = await Order.findOneAndUpdate(
+        { _id: orderId, "materials.productId": materialId },
+        {
+          $set: {
+            "materials.$.pricePerUnit": updateData.pricePerUnit,
+            "materials.$.quantity": updateData.quantity
+          }
+        },
+        { new: true }
+      );
+
+      if (!order) {
+        return Response.notFound(res, "Order or Material not found");
+      }
+
+      io.emit("materialUpdated", { orderId, materialId, updatedMaterial: updateData });
+      return Response.success(res, "Material updated successfully", order);
+    } catch (error) {
+      console.error(error);
+      return Response.serverError(res, "Failed to update material", error);
+    }
+  }
   static async deleteAllMaterials(req, res) {
     try {
       const order = await Order.findById(req.params.orderId);
@@ -136,3 +171,4 @@ class OrderService {
 }
 
 module.exports = OrderService;
+

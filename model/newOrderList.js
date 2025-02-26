@@ -14,10 +14,18 @@ const orderSchema = new mongoose.Schema({
     totalPrice: { type: Number, default: 0 },
     materials: [materialSchema],
     isNew: { type: Boolean, default: false },
-    sentToAccountant: { type: Boolean, default: false },
-    approvedByAccountant: { type: Boolean, default: false },
+    sentToDistributor: { type: Boolean, default: false },
     addedToData: { type: Boolean, default: false },
-    isPaid: { type: Boolean, default: false }
+    isPaid: { type: Boolean, default: false },
+    approvedByDistributor: { type: Boolean, default: false },
+    distributorId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Worker",
+    },
+    shopsId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Shops",
+    }
 }, {
     timestamps: { currentTime: () => Date.now() + 5 * 60 * 1000 },
     suppressReservedKeysWarning: true // Ogohlantirishni o'chirish
