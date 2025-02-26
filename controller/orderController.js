@@ -28,56 +28,8 @@ class OrderController {
     }
   }
 
-  // Yangi buyurtma qo'shish
-  // static async createOrder(req, res) {
-  //   try {
-  //     console.log(req.body);
-  //     const io = req.app.get("socket");
-  //     const data = JSON.parse(JSON.stringify(req.body));
-  //     data.materials = JSON.parse(data.materials);
-
-  //     if (req.file) {
-  //       const formData = new FormData();
-  //       const processedImage = await sharp(req.file.buffer)
-  //         .resize({ width: 500, height: 500, fit: "cover" }) // 3x4 format
-  //         .jpeg({ quality: 90 }) // Sifatni saqlash
-  //         .toBuffer();
-
-  //       formData.append("image", processedImage.toString("base64"));
-
-  //       let api = `${process.env.IMAGE_BB_API_URL}?key=${process.env.IMAGE_BB_API_KEY}`;
-  //       const response = await axios.post(api, formData, {
-  //         headers: { "Content-Type": "multipart/form-data" },
-  //       });
-
-  //       if (response?.data?.data?.url) {
-  //         data?.image = response.data.data.url;
-  //       }
-  //     }
-
-  //     data.budget = +data.budget;
-  //     data.paid = +data.paid;
-  //     data.estimatedDays = +data.estimatedDays;
-  //     data.dimensions = {
-  //       length: +data.dimensions.length,
-  //       width: +data.dimensions.width,
-  //       height: +data.dimensions.height,
-  //     };
-  //     data.customer.inn = +data.customer.inn || 0;
-  //     console.log(data);
-
-  //     const newOrder = await Order.create(data);
-  //     if (!newOrder) return response.error(res, "Buyurtma yaratishda xatolik");
-  //     response.created(res, "Buyurtma muvaffaqiyatli yaratildi", newOrder);
-  //     io.emit("newOrder", newOrder);
-  //   } catch (error) {
-  //     return response.error(res, "Buyurtma yaratishda xatolik", error);
-  //   }
-  // }
-
   static async createOrder(req, res) {
     try {
-      // const io = req.app.get("socket");
       const data = JSON.parse(JSON.stringify(req.body));
 
       data.paid = +data.paid;
@@ -87,17 +39,19 @@ class OrderController {
         const file = req.files[i];
         if (!file) continue;
 
-        const processedImage = await sharp(file.buffer)
-          .resize({ width: 500, height: 500, fit: "cover" })
-          .jpeg({ quality: 90 })
-          .toBuffer();
-
-        const formData = new FormData();
-        formData.append("image", processedImage);
-
-        const api = `${process.env.IMAGE_BB_API_URL}?key=${process.env.IMAGE_BB_API_KEY}`;
-
         try {
+          const processedImage = await sharp(file.buffer)
+            .resize({ width: 500, height: 500, fit: "cover" })
+            .jpeg({ quality: 90 })
+            .toBuffer();
+
+          const base64Image = processedImage.toString("base64");
+
+          const formData = new FormData();
+          formData.append("image", base64Image);
+
+          const api = `${process.env.IMAGE_BB_API_URL}?key=${process.env.IMAGE_BB_API_KEY}`;
+
           const response = await axios.post(api, formData, {
             headers: {
               "Content-Type": "multipart/form-data",
@@ -105,14 +59,14 @@ class OrderController {
           });
 
           if (response?.data?.data?.url) {
-            data.orders[i].images = response.data.data.url;
+            data.orders[i].image = response.data.data.url;
           }
         } catch (err) {
-          console.log(
-            "Image upload error:",
+          return response.error(
+            res,
+            "Rasm yuklashda xatolik",
             err?.response?.data || err.message
           );
-          return response.error(res, "Rasm yuklashda xatolik", err);
         }
       }
 
@@ -124,19 +78,19 @@ class OrderController {
           width: +item.dimensions.width,
           height: +item.dimensions.height,
         },
-        images: item.images,
+        image: item.image,
       }));
-      console.log("data>>", data);
-      // return;
-      // **Yangi buyurtmani yaratish**
-      // const newOrder = await Order.create(data);
-      // if (!newOrder) return response.error(res, "Buyurtma yaratishda xatolik");
 
-      // response.created(res, "Buyurtma muvaffaqiyatli yaratildi", newOrder);
+      // **Yangi buyurtmani yaratish**
+      const newOrder = await Order.create(data);
+      if (!newOrder) return response.error(res, "Buyurtma yaratishda xatolik");
+
+      response.success(res, "Buyurtma muvaffaqiyatli yaratildi", newOrder);
+
+      // const io = req.app.get("socket");
       // io.emit("newOrder", newOrder);
     } catch (error) {
-      console.log(">>>>", error);
-      return response.error(res, "Buyurtma yaratishda xatolik", error);
+      response.serverError(res, "Serverda xatolik yuz berdi", error);
     }
   }
 
