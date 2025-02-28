@@ -4,7 +4,7 @@ const response = require("../utils/response"); // Response class'ni import qilam
 const axios = require("axios");
 const FormData = require("form-data");
 const sharp = require("sharp");
-const mongoose = require('mongoose');
+const mongoose = require("mongoose");
 const { ObjectId } = mongoose.Types;
 
 class OrderController {
@@ -135,7 +135,6 @@ class OrderController {
 
   // Omborchi material berdi
   static giveMaterial = async (req, res) => {
-
     try {
       const { orderCardId, orderId, materialName, givenQuantity } = req.body;
 
@@ -147,7 +146,6 @@ class OrderController {
       const storeMaterial = await StoreModel.findOne({ name: materialName });
       if (!storeMaterial)
         return response.notFound(res, "Material omborda mavjud emas");
-
 
       // Ombordagi yetarlilikni tekshirish
       if (storeMaterial.quantity < givenQuantity) {
@@ -161,10 +159,18 @@ class OrderController {
         );
       }
       const orderCardIdAsObjectId = new ObjectId(orderCardId);
-      const findedMaterial = order.orders.find((m) => m._id.equals(orderCardIdAsObjectId));
-      const material = findedMaterial.materials.find((i) => i.name === materialName)
+      const findedMaterial = order.orders.find((m) =>
+        m._id.equals(orderCardIdAsObjectId)
+      );
+      const material = findedMaterial.materials.find(
+        (i) => i.name === materialName
+      );
 
-      if (!material) return response.notFound(res, "Buyurtma ichida bunday material mavjud emas");
+      if (!material)
+        return response.notFound(
+          res,
+          "Buyurtma ichida bunday material mavjud emas"
+        );
 
       storeMaterial.quantity -= givenQuantity;
       await storeMaterial.save();
@@ -183,7 +189,8 @@ class OrderController {
 
       return response.success(
         res,
-        `Material muvaffaqiyatli berildi: ${givenQuantity} ${material.unit || storeMaterial.unit
+        `Material muvaffaqiyatli berildi: ${givenQuantity} ${
+          material.unit || storeMaterial.unit
         }!`,
         givenMaterial
       );
@@ -256,7 +263,8 @@ class OrderController {
         { $group: { _id: null, totalGiven: { $sum: "$givenQuantity" } } },
       ]);
 
-      const totalGiven = givenMaterials.length > 0 ? givenMaterials[0].totalGiven : 0;
+      const totalGiven =
+        givenMaterials.length > 0 ? givenMaterials[0].totalGiven : 0;
 
       // Umumiy foiz hisoblash
       const percentage =
@@ -264,14 +272,12 @@ class OrderController {
 
       return res.json({
         message: "Umumiy materiallar ta'minlanish foizi",
-        percentage,
+        percentage: +percentage,
       });
     } catch (error) {
       return res.status(500).json({ message: "Server xatosi", error });
     }
   };
-
-
 
   static getMaterialById = async (req, res) => {
     try {
