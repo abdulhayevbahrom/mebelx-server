@@ -29,6 +29,7 @@ const MaterialGivenSchema = new mongoose.Schema({
     ref: "WarehouseItem",
     required: true,
   },
+  orderCardId: { type: String },
 });
 
 // Customer Schema (Mijoz ma'lumotlari)
@@ -87,3 +88,5 @@ const Order = mongoose.model("Order", InfoSchema);
 
 // Eksport qilish
 module.exports = { Order, MaterialGiven };
+
+

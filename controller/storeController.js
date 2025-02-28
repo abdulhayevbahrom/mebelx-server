@@ -28,12 +28,11 @@ class StoreController {
   async updateStore(req, res) {
     try {
       let io = req.app.get("socket");
-      const { id } = req.params;
+      const { id, } = req.params;
       const data = req.body;
 
       let store = await storeDB.findById(id);
 
-      // Yangi ma'lumotlar bilan yangilash
       store.quantity = data.quantity || 0;
       store.name = data.name || store.name;
       store.category = data.category || store.category;

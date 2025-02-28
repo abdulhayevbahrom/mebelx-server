@@ -6,7 +6,7 @@ const upload2 = multer();
 // const adminController = require("../controller/adminController");
 // const adminValidation = require("../validation/AdminValidation");
 const workerController = require("../controller/workerController");
-const OrderService = require("../controller/newOrderList");
+const OrderService = require("../controller/todoList");
 const workerValidation = require("../validation/WorkerValidation");
 const attendanceController = require("../controller/attendanceController");
 const WorkingHoursController = require("../controller/workingHoursController");
@@ -127,5 +127,16 @@ router.post('/shops', optionController.addOption);
 router.delete('/shops/:id', optionController.deleteOption);
 
 
+const orderShops = require('../controller/shopsCtrl');
+
+router.post('/newShops/', orderShops.createOrder);
+router.get('/newShops/', orderShops.getAllOrders);
+router.get('/newShops/shop/:shopsId', orderShops.getOrdersByShop);
+router.get('/newShops/unpaid/total/:shopsId', orderShops.getUnpaidTotalByShop);
+router.get('/newShops/unpaid/total', orderShops.getUnpaidTotal);
+router.put('/newShops/:id', orderShops.updateOrder);
+router.delete('/newShops/:id', orderShops.deleteOrder);
+router.post('/newShops/:orderId/materials', orderShops.addMaterial);
+router.delete('/newShops/:orderId/materials/:materialId', orderShops.deleteMaterial);
 
 module.exports = router;
