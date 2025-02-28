@@ -100,6 +100,7 @@ router.get(
 );
 router.get("/order-debt", OrderController.calculateDebt);
 router.get("/ordergetdebtors", OrderController.getDebtorOrders);
+router.post("/order/additional/material", OrderController.createAdditionalMaterial);
 
 // New orders list
 router.post("/list", OrderService.createOrder);
