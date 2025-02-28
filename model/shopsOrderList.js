@@ -24,11 +24,8 @@ const orderSchema = new mongoose.Schema({
     timestamps: { currentTime: () => Date.now() + 5 * 60 * 1000 },
 });
 
-// totalPrice avtomatik hisoblanishi uchun pre saqlash middleware
-orderSchema.pre('save', function (next) {
-    this.totalPrice = this.materials.reduce((sum, material) => sum + (material.pricePerUnit * material.quantity), 0);
-    next();
-});
+
 
 const Orderlist = mongoose.model('Orderlist', orderSchema);
+
 module.exports = Orderlist;
