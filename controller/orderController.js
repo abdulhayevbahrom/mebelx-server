@@ -189,8 +189,7 @@ class OrderController {
 
       return response.success(
         res,
-        `Material muvaffaqiyatli berildi: ${givenQuantity} ${
-          material.unit || storeMaterial.unit
+        `Material muvaffaqiyatli berildi: ${givenQuantity} ${material.unit || storeMaterial.unit
         }!`,
         givenMaterial
       );
@@ -447,6 +446,41 @@ class OrderController {
         "Qarzdor mijozlarni olishda xatolik",
         error
       );
+    }
+  }
+
+  static createAdditionalMaterial = async (req, res) => {
+    try {
+      const { orderId, orderCardId, name, quantity, price, unit, materialID } = req.body;
+      // orderId mavjudligini tekshirish
+      const order = await Order.findById(orderId);
+      if (!order) {
+        response.notFound(res, "Buyurtma (orderId) topilmadi");
+      }
+
+      // orderCardId mavjudligini tekshirish
+      const orderCard = order.orders.find((card) => card._id.toString() === orderCardId);
+      if (!orderCard) {
+        response.notFound(res, "Buyurtma kartasi (orderCardId) topilmadi");
+      }
+
+      // Materialni orderCard ga qo'shish
+      const newMaterial = {
+        name,
+        quantity,
+        price,
+        unit,
+        materialID,
+      };
+
+      orderCard.materials.push(newMaterial);
+
+      // Buyurtmani yangilash
+      await order.save();
+
+      response.success(res, "Material muvaffaqiyatli qo'shildi", newMaterial);
+    } catch (error) {
+      return response.serverError(res, "Serverda xatolik yuz berdi", error);
     }
   }
 }

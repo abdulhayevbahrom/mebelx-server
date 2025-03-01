@@ -39,8 +39,7 @@ class OrderService {
   static async getNewOrders(req, res) {
     try {
       const orders = await Order.findOne({
-        isNew: true,
-        sentToAccountant: false,
+        isNew: true
       });
       return Response.success(res, "Orders retrieved successfully", orders);
     } catch (error) {
