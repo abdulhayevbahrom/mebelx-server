@@ -15,7 +15,7 @@ const OrderController = require("../controller/orderController");
 const BalanceController = require("../controller/BalanceController");
 const storeController = require("../controller/storeController");
 const storeValidation = require("../validation/storeValidation");
-const optionController = require('../controller/shopsController');
+const optionController = require("../controller/shopsController");
 // // ADMIN
 // router.get("/admin/all", adminController.getAdmins);
 // router.post("/admin/create", adminValidation, adminController.createAdmin);
@@ -113,30 +113,35 @@ router.delete(
   "/list/:orderId/materials/:materialId",
   OrderService.deleteMaterialById
 );
-router.put("/list/:orderId/materials/:materialId", OrderService.updateMaterialById);
+router.put(
+  "/list/:orderId/materials/:materialId",
+  OrderService.updateMaterialById
+);
 router.delete("/list/:orderId/materials", OrderService.deleteAllMaterials);
 router.post("/list/:orderId/materials", OrderService.createMaterial);
 
 router.get("/balance", BalanceController.getBalance);
 router.post("/balance/update", BalanceController.updateBalance);
 
-
 // shops
-router.get('/shops', optionController.getAllOptions);
-router.post('/shops', optionController.addOption);
-router.delete('/shops/:id', optionController.deleteOption);
+router.get("/shops", optionController.getAllOptions);
+router.post("/shops", optionController.addOption);
+router.delete("/shops/:id", optionController.deleteOption);
 
+const orderShops = require("../controller/shopsCtrl");
 
-const orderShops = require('../controller/shopsCtrl');
-
-router.post('/newShops/', orderShops.createOrder);
-router.get('/newShops/', orderShops.getAllOrders);
-router.get('/newShops/shop/:shopsId', orderShops.getOrdersByShop);
-router.get('/newShops/unpaid/total/:shopsId', orderShops.getUnpaidTotalByShop);
-router.get('/newShops/unpaid/total', orderShops.getUnpaidTotal);
-router.put('/newShops/:id', orderShops.updateOrder);
-router.delete('/newShops/:id', orderShops.deleteOrder);
-router.post('/newShops/:orderId/materials', orderShops.addMaterial);
-router.delete('/newShops/:orderId/materials/:materialId', orderShops.deleteMaterial);
+router.post("/newShops/", orderShops.createOrder);
+router.get("/newShops/", orderShops.getAllOrders);
+router.get("/newShops/shop/:shopsId", orderShops.getOrdersByShop);
+router.get("/newShops/unpaid/total/:shopsId", orderShops.getUnpaidTotalByShop);
+router.get("/newShops/unpaid/total", orderShops.getUnpaidTotal);
+router.put("/newShops/:id", orderShops.updateOrder);
+router.delete("/newShops/:id", orderShops.deleteOrder);
+router.post("/newShops/:orderId/materials", orderShops.addMaterial);
+router.delete(
+  "/newShops/:orderId/materials/:materialId",
+  orderShops.deleteMaterial
+);
+router.get("/getshopsbyisPaid", orderShops.getOrdersByisPaid);
 
 module.exports = router;

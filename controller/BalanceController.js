@@ -6,13 +6,12 @@ class BalanceController {
   static async getBalance(req, res) {
     try {
       let balance = await Balance.findOne();
+
       if (!balance) {
         balance = new Balance();
         await balance.save();
       }
-      return Response.success(res, "Balans olindi", {
-        balance: balance.balance,
-      });
+      return Response.success(res, "Balans olindi", balance);
     } catch (error) {
       return Response.serverError(res, "Xatolik yuz berdi", error);
     }
@@ -34,9 +33,9 @@ class BalanceController {
       let balanceField;
       if (payType === "dollar") {
         balanceField = "dollarBalance";
-      } else if (payType === "bankTransfer") {
+      } else if (payType === "Bank orqali") {
         balanceField = "bankTransferBalance";
-      } else if (payType === "cash") {
+      } else if (payType === "Naqd") {
         balanceField = "cashBalance";
       } else {
         return Response.error(res, "Invalid payment type");
@@ -58,11 +57,10 @@ class BalanceController {
       }
 
       // Update balance using findOneAndUpdate
-      const updatedBalance = await Balance.findOneAndUpdate(
-        {},
-        updateQuery,
-        { new: true, upsert: true }
-      );
+      const updatedBalance = await Balance.findOneAndUpdate({}, updateQuery, {
+        new: true,
+        upsert: true,
+      });
 
       io.emit("balance", updatedBalance);
 
@@ -73,8 +71,6 @@ class BalanceController {
       return Response.serverError(res, "An error occurred", error);
     }
   }
-
-
 }
 
 module.exports = BalanceController;

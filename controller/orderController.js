@@ -343,23 +343,63 @@ class OrderController {
   //     return response.serverError(res, "Server xatosi", error);
   //   }
   // }
+
+  // static async calculateDebt(req, res) {
+  //   try {
+  //     const totalDebt = await Order.aggregate([
+  //       {
+  //         $match: { isType: true }, // Faqat isType true bo'lgan mijozlarni tanlash
+  //       },
+  //       {
+  //         $group: {
+  //           _id: null,
+  //           totalBudget: { $sum: "$budget" },
+  //           totalPaid: { $sum: "$paid" },
+  //         },
+  //       },
+  //       {
+  //         $project: {
+  //           _id: 0,
+  //           totalDebt: { $subtract: ["$totalBudget", "$totalPaid"] }, // Qarzni hisoblash
+  //         },
+  //       },
+  //     ]);
+
+  //     const debtAmount = totalDebt.length > 0 ? totalDebt[0].totalDebt : 0;
+
+  //     // Pul birligi formati bilan chiqarish
+  //     const formattedDebt = new Intl.NumberFormat("uz-UZ", {
+  //       style: "currency",
+  //       currency: "UZS",
+  //       minimumFractionDigits: 0,
+  //     }).format(debtAmount);
+  //     return response.success(
+  //       res,
+  //       "isType: true bo'lgan mijozlarning umumiy qarzi:",
+  //       formattedDebt
+  //     );
+  //   } catch (error) {
+  //     return response.serverError(res, "Server xatosi", error);
+  //   }
+  // }
+
   static async calculateDebt(req, res) {
     try {
       const totalDebt = await Order.aggregate([
         {
-          $match: { isType: true }, // Faqat isType true bo'lgan mijozlarni tanlash
+          $match: { isType: true }, // 1. isType: true bo'lgan mijozlarni tanlash
         },
         {
           $group: {
             _id: null,
-            totalBudget: { $sum: "$budget" },
-            totalPaid: { $sum: "$paid" },
+            totalPaid: { $sum: "$paid" }, // 2. Topilgan barcha paid qiymatlarini yig'ish
+            totalBudget: { $sum: { $sum: "$orders.budget" } }, // 3. orders massivining budget maydonlarini yig'ish
           },
         },
         {
           $project: {
             _id: 0,
-            totalDebt: { $subtract: ["$totalBudget", "$totalPaid"] }, // Qarzni hisoblash
+            totalDebt: { $subtract: ["$totalBudget", "$totalPaid"] }, // 4. Qarzni hisoblash (totalBudget - totalPaid)
           },
         },
       ]);
@@ -372,6 +412,7 @@ class OrderController {
         currency: "UZS",
         minimumFractionDigits: 0,
       }).format(debtAmount);
+
       return response.success(
         res,
         "isType: true bo'lgan mijozlarning umumiy qarzi:",
@@ -385,16 +426,27 @@ class OrderController {
   // get debtor orders
   static async getDebtorOrders(req, res) {
     try {
-      // const orders = await Order.find({
-      //   isType: true,
-      //   $expr: { $gt: ["$totalBudget", "$totalPaid"] },
-      // });
-      const orders = await Order.find();
+      const debtors = await Order.aggregate([
+        { $match: { isType: true } }, // isType: true bo'lganlarni olish
+        {
+          $addFields: {
+            totalBudget: { $sum: "$orders.budget" }, // orders array ichidagi budget yig'indisi
+          },
+        },
+        { $match: { $expr: { $lt: ["$paid", "$totalBudget"] } } }, // paid < totalBudget bo'lganlarni olish
+      ]);
 
-      return response.success(res, "Orders retrieved successfully", orders);
+      if (!debtors.length)
+        return response.notFound(res, "Qarzdor mijozlar topilmadi");
+
+      return response.success(res, "Qarzdor mijozlar ro'yxati", debtors);
     } catch (error) {
       console.log(error);
-      return response.serverError(res, "Failed to retrieve orders", error);
+      return response.serverError(
+        res,
+        "Qarzdor mijozlarni olishda xatolik",
+        error
+      );
     }
   }
 }
