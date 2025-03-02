@@ -25,11 +25,11 @@ class WorkerController {
 
       const data = JSON.parse(JSON.stringify(req.body));
 
-      if (data.login !== "undefined") {
-        let exactWorker = await workersDB.findOne({ login: data.login });
-        if (exactWorker) return response.error(res, "Login mavjud");
-      }
-      data.login = new Date().toISOString();
+      // if (data.login !== "undefined") {
+      //   let exactWorker = await workersDB.findOne({ login: data.login });
+      //   if (exactWorker) return response.error(res, "Login mavjud");
+      // }
+      // data.login = new Date().toISOString();
 
       if (req.file) {
         const formData = new FormData();
