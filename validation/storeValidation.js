@@ -22,7 +22,6 @@ const storeValidation = (req, res, next) => {
       "quantity",
       "unit",
       "pricePerUnit",
-      "supplier",
     ],
     additionalProperties: false,
     errorMessage: {
@@ -33,7 +32,6 @@ const storeValidation = (req, res, next) => {
         unit: "O‘lchov birligi kiritish shart",
         pricePerUnit: "Birlik narxi kiritish shart",
         totalPrice: "Jami narx kiritish shart",
-        supplier: "Yetkazib beruvchi kiritish shart",
       },
       properties: {
         name: "Mahsulot nomi kiritish shart",
@@ -42,7 +40,6 @@ const storeValidation = (req, res, next) => {
         unit: "O‘lchov birligi kiritish shart",
         pricePerUnit: "Birlik narxi kiritish shart",
         totalPrice: "Jami narx kiritish shart",
-        supplier: "Yetkazib beruvchi kiritish shart",
       },
     },
   };

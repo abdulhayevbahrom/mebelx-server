@@ -101,6 +101,8 @@ router.get(
 router.get("/order-debt", OrderController.calculateDebt);
 router.get("/ordergetdebtors", OrderController.getDebtorOrders);
 router.post("/order/additional/material", OrderController.createAdditionalMaterial);
+// Buyurtmani yakunlash va materiallarni yangilash
+router.post("/complete-order", OrderController.completeOrder);
 
 // New orders list
 router.post("/list", OrderService.createOrder);

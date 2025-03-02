@@ -449,6 +449,7 @@ class OrderController {
     }
   }
 
+
   static createAdditionalMaterial = async (req, res) => {
     try {
       const { orderId, orderCardId, name, quantity, price, unit, materialID } = req.body;
@@ -483,6 +484,42 @@ class OrderController {
       return response.serverError(res, "Serverda xatolik yuz berdi", error);
     }
   }
+
+  static completeOrder = async (req, res) => {
+    try {
+      const { orderId } = req.body;
+
+      // 1. Buyurtmani olish
+      const order = await Order.findById(orderId);
+      if (!order) {
+        return { success: false, message: "Order topilmadi!" };
+      }
+
+      // 2. MaterialGiven dan tegishli buyurtmalarni olish
+      const givenMaterials = await MaterialGiven.find({ orderId });
+
+      // 3. Har bir berilgan materialni tekshiramiz
+      givenMaterials.forEach((given) => {
+        order.orders.forEach((orderItem) => {
+          orderItem.materials.forEach((material) => {
+            if (material._id.toString() === given.materialId.toString()) {
+              // **quantity ni har doim givenQuantity ga tenglashtiramiz**
+              material.quantity = given.givenQuantity;
+            }
+          });
+        });
+      });
+      order.isType = false;
+      // 4. Yangilangan orderni saqlaymiz
+      await order.save();
+
+      return response.success(res, "Order materiallari yangilandi!", order);
+    } catch (error) {
+      return response.serverError(res, error.message);
+    }
+  };
+
+
 }
 
 module.exports = OrderController;
