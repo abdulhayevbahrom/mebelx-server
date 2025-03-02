@@ -10,8 +10,8 @@ const workersModel = new mongoose.Schema(
     phone: { type: String, required: true, unique: true },
     idNumber: { type: String, required: true },
     password: { type: String },
-    salary: { type: String },
-    login: { type: String, unique: true },
+    salary: { type: String, default: "0" },
+    login: { type: String },
     workerType: { type: String },
     img: { type: String },
     role: {
