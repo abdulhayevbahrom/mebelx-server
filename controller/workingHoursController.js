@@ -5,29 +5,19 @@ class WorkingHoursController {
     // 1. Create (Yaratish)
     async createWorkingHours(req, res) {
         try {
-            const { wages, overtimeWages, workingHours, voxa, toshkent, vodiy } = req.body;
-
-
             // Check if working hours data already exists
             const existingWorkingHours = await WorkingHours.findOne();
             if (existingWorkingHours) {
-                return Response.badRequest(res, "Ish Haqqi va Ish Vaqti mavjud. Yangilanish uchun foydalaning.");
+                return Response.badRequest(res, "Kompaniya malumotlari mavjud!. Yangilanish uchun foydalaning.");
             }
 
             // Create new Working Hours entry
-            const newWorkingHours = new WorkingHours({
-                wages,
-                overtimeWages,
-                workingHours,
-                voxa,
-                toshkent,
-                vodiy,
-            });
+            const newWorkingHours = new WorkingHours(req.body);
 
             await newWorkingHours.save();
 
             // Return success response
-            Response.created(res, "Ish Haqqi va Ish Vaqti muvaffaqiyatli yaratildi.", newWorkingHours);
+            Response.created(res, "Kompaniya malumotlari muvaffaqiyatli yaratildi.", newWorkingHours);
         } catch (error) {
             // Return server error response
             Response.serverError(res, `Xatolik yuz berdi: ${error.message}`);

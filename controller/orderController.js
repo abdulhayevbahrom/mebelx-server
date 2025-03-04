@@ -75,6 +75,7 @@ class OrderController {
       data.orders = data.orders.map((item) => ({
         name: item.name,
         budget: +item.budget,
+        quantity: +item.quantity,
         dimensions: {
           length: +item.dimensions.length,
           width: +item.dimensions.width,

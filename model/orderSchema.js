@@ -63,6 +63,7 @@ const OrderSchema = new mongoose.Schema({
     height: { type: Number, required: true },
   },
   budget: { type: Number },
+  quantity: { type: Number },
   image: { type: String },
   materials: [MaterialSchema],
 });
@@ -76,6 +77,7 @@ const InfoSchema = new mongoose.Schema(
     customer: { type: CustomerSchema, required: true },
     address: { type: OrderAddressSchema, required: true },
     isType: { type: Boolean, default: true },
+    isActive: { type: Boolean, default: false },
     description: { type: String },
     orders: { type: [OrderSchema], default: [] }, // Array qilib belgilash kerak
   },
