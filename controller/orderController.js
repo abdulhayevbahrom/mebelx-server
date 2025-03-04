@@ -388,7 +388,7 @@ class OrderController {
     try {
       const totalDebt = await Order.aggregate([
         {
-          $match: { isType: true }, // 1. isType: true bo'lgan mijozlarni tanlash
+          $match: { isType: true, isActive: true }, // 1. isType: true bo'lgan mijozlarni tanlash
         },
         {
           $group: {
