@@ -41,6 +41,7 @@ const expenseSchema = new mongoose.Schema(
         "Qaytgan mablag‘",
         "Davlat subsidiyasi",
         "Boshqa daromadlar",
+        "Soldo",
       ],
       required: true,
     },
@@ -59,6 +60,14 @@ const expenseSchema = new mongoose.Schema(
     relevantId: {
       // Kimga tegishli
       type: mongoose.Schema.Types.ObjectId,
+    },
+    soldoDate: {
+      from: {
+        type: Date,
+      },
+      to: {
+        type: Date,
+      },
     },
   },
   { timestamps: true }

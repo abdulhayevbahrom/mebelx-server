@@ -23,7 +23,6 @@ class adminController {
         .digest("hex");
       req.body.password = `${salt}:${hashpassword}`;
 
-
       const admin = await AdminDB.create(req.body);
       if (!admin) return response.error(res, "Admin qo'shilmadi", admin);
       response.created(res, "Admin yaratildi", admin);
@@ -86,6 +85,7 @@ class adminController {
         return response.error(res, "Admin yangilashda xatolik", admin);
       response.success(res, "Admin yangilandi", admin);
     } catch (err) {
+      console.log(err);
       response.serverError(res, err.message, "Server xatosi");
     }
   }

@@ -16,6 +16,7 @@ const BalanceController = require("../controller/BalanceController");
 const storeController = require("../controller/storeController");
 const storeValidation = require("../validation/storeValidation");
 const optionController = require("../controller/shopsController");
+const driverController = require("../controller/driverController");
 // // ADMIN
 // router.get("/admin/all", adminController.getAdmins);
 // router.post("/admin/create", adminValidation, adminController.createAdmin);
@@ -100,7 +101,10 @@ router.get(
 );
 router.get("/order-debt", OrderController.calculateDebt);
 router.get("/ordergetdebtors", OrderController.getDebtorOrders);
-router.post("/order/additional/material", OrderController.createAdditionalMaterial);
+router.post(
+  "/order/additional/material",
+  OrderController.createAdditionalMaterial
+);
 // Buyurtmani yakunlash va materiallarni yangilash
 router.post("/complete-order", OrderController.completeOrder);
 
@@ -146,5 +150,12 @@ router.delete(
   orderShops.deleteMaterial
 );
 router.get("/getshopsbyisPaid", orderShops.getOrdersByisPaid);
+
+// driver
+router.get("/driver/all", driverController.getDrivers);
+router.post("/driver/create", driverController.createDriver);
+router.delete("/driver/delete/:id", driverController.deleteDriver);
+router.put("/driver/increment/:id", driverController.incementBalance);
+router.put("/driver/decrement/:id", driverController.decrementBalance);
 
 module.exports = router;
