@@ -39,7 +39,7 @@ class OrderService {
   static async getNewOrders(req, res) {
     try {
       const orders = await Order.findOne({
-        isNew: true
+        isNew: true,
       });
       return Response.success(res, "Orders retrieved successfully", orders);
     } catch (error) {
@@ -59,7 +59,6 @@ class OrderService {
   static async getOrderHistory(req, res) {
     try {
       const order = await Order.find({ isPaid: true });
-      console.log(order);
       if (!order) return Response.notFound(res, "Order not found");
       return Response.success(res, "Order retrieved successfully", order);
     } catch (error) {
@@ -126,20 +125,14 @@ class OrderService {
       const { orderId, materialId } = req.params;
       const updateData = req.body;
 
-      console.log({
-        orderId,
-        materialId,
-        updateData
-      });
-
       // `materials` ichidagi aniq `productId` ni yangilash uchun indeksdan foydalanamiz
       const order = await Order.findOneAndUpdate(
         { _id: orderId, "materials.productId": materialId },
         {
           $set: {
             "materials.$.pricePerUnit": updateData.pricePerUnit,
-            "materials.$.quantity": updateData.quantity
-          }
+            "materials.$.quantity": updateData.quantity,
+          },
         },
         { new: true }
       );
@@ -148,7 +141,11 @@ class OrderService {
         return Response.notFound(res, "Order or Material not found");
       }
 
-      io.emit("materialUpdated", { orderId, materialId, updatedMaterial: updateData });
+      io.emit("materialUpdated", {
+        orderId,
+        materialId,
+        updatedMaterial: updateData,
+      });
       return Response.success(res, "Material updated successfully", order);
     } catch (error) {
       console.error(error);
@@ -170,4 +167,3 @@ class OrderService {
 }
 
 module.exports = OrderService;
-

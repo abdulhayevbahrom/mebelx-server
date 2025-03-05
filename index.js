@@ -27,8 +27,8 @@ app.use(cors(corsOptions));
 
 (async () => {
   await connect(process.env.MONGO_URI)
-    .then(() => console.log("MongoDBga ulanish muvaffaqiyatli! ✅✅✅"))
-    .catch((err) => console.log("MongoDB ulanish xatosi:,🛑🛑🛑", err));
+    .then(() => console.log("MongoDBga ulanish muvaffaqiyatli! ✅✅"))
+    .catch((err) => console.log("MongoDB ulanish xatosi:,🛑🛑", err));
 })();
 
 app.set("socket", io);

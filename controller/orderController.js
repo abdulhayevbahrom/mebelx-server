@@ -190,7 +190,8 @@ class OrderController {
 
       return response.success(
         res,
-        `Material muvaffaqiyatli berildi: ${givenQuantity} ${material.unit || storeMaterial.unit
+        `Material muvaffaqiyatli berildi: ${givenQuantity} ${
+          material.unit || storeMaterial.unit
         }!`,
         givenMaterial
       );
@@ -290,7 +291,7 @@ class OrderController {
     try {
       const totalDebt = await Order.aggregate([
         {
-          $match: { isType: true }, // 1. isType: true bo'lgan mijozlarni tanlash
+          $match: { isType: true, isActive: true }, // 1. isType: true bo'lgan mijozlarni tanlash
         },
         {
           $group: {
@@ -344,7 +345,6 @@ class OrderController {
 
       return response.success(res, "Qarzdor mijozlar ro'yxati", debtors);
     } catch (error) {
-      console.log(error);
       return response.serverError(
         res,
         "Qarzdor mijozlarni olishda xatolik",
@@ -353,10 +353,10 @@ class OrderController {
     }
   }
 
-
   static createAdditionalMaterial = async (req, res) => {
     try {
-      const { orderId, orderCardId, name, quantity, price, unit, materialID } = req.body;
+      const { orderId, orderCardId, name, quantity, price, unit, materialID } =
+        req.body;
       // orderId mavjudligini tekshirish
       const order = await Order.findById(orderId);
       if (!order) {
@@ -364,7 +364,9 @@ class OrderController {
       }
 
       // orderCardId mavjudligini tekshirish
-      const orderCard = order.orders.find((card) => card._id.toString() === orderCardId);
+      const orderCard = order.orders.find(
+        (card) => card._id.toString() === orderCardId
+      );
       if (!orderCard) {
         response.notFound(res, "Buyurtma kartasi (orderCardId) topilmadi");
       }
@@ -387,7 +389,7 @@ class OrderController {
     } catch (error) {
       return response.serverError(res, "Serverda xatolik yuz berdi", error);
     }
-  }
+  };
 
   static completeOrder = async (req, res) => {
     try {
@@ -422,8 +424,6 @@ class OrderController {
       return response.serverError(res, error.message);
     }
   };
-
-
 }
 
 module.exports = OrderController;

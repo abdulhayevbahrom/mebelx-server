@@ -85,7 +85,6 @@ class adminController {
         return response.error(res, "Admin yangilashda xatolik", admin);
       response.success(res, "Admin yangilandi", admin);
     } catch (err) {
-      console.log(err);
       response.serverError(res, err.message, "Server xatosi");
     }
   }

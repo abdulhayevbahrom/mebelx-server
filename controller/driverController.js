@@ -14,12 +14,34 @@ class DriverController {
 
   async createDriver(req, res) {
     try {
-      let { name, fare } = req.body;
-      if (!name || !fare)
+      let { driver, fare } = req.body;
+      if (!driver || !fare)
         return response.badRequest(res, "Haydovchi va yo'lkira kiting");
-      const driver = await Driver.create({ name, balance: fare });
-      if (!driver) return response.error(res, "Haydovchi yaratishda xatolik");
-      response.success(res, "Haydovchi yaratildi", driver);
+
+      let findDriver = await Driver.findById(driver.id);
+      if (findDriver) {
+        const result = await Driver.findByIdAndUpdate(
+          driver.id,
+          { $inc: { balance: fare } },
+          { new: true }
+        );
+        if (!result) {
+          return response.notFound(res, "Haydovchi topilmadi");
+        }
+        return response.success(
+          res,
+          "Balans muvaffaqiyatli o'zgartirildi",
+          result
+        );
+      }
+
+      const new_driver = await Driver.create({
+        name: driver.name,
+        balance: fare,
+      });
+      if (!new_driver)
+        return response.error(res, "Haydovchi yaratishda xatolik");
+      response.success(res, "Haydovchi yaratildi", new_driver);
     } catch (error) {
       response.error(res, error.message);
     }

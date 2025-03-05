@@ -80,6 +80,7 @@ const InfoSchema = new mongoose.Schema(
     isActive: { type: Boolean, default: false },
     description: { type: String },
     orders: { type: [OrderSchema], default: [] }, // Array qilib belgilash kerak
+    extraExpenses: { type: Number, default: 0 },
   },
   { timestamps: true }
 );
@@ -90,5 +91,3 @@ const Order = mongoose.model("Order", InfoSchema);
 
 // Eksport qilish
 module.exports = { Order, MaterialGiven };
-
-
