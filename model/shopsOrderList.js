@@ -13,6 +13,8 @@ const materialSchema = new mongoose.Schema({
 const orderSchema = new mongoose.Schema({
     shopName: { type: String, default: "" },
     isPaid: { type: Boolean, default: false },
+    paid: { type: Number, default: 0 },
+    returnedMoney: { type: Number, default: 0 },
     isType: { type: Boolean, default: true },
     totalPrice: { type: Number },
     shopsId: {

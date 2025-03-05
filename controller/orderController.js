@@ -199,40 +199,7 @@ class OrderController {
     }
   };
 
-  // static orderProgress = async (req, res) => {
-  //   try {
-  //     const { orderId } = req.params;
 
-  //     const order = await Order.findById(orderId);
-  //     if (!order)
-  //       return res.status(404).json({ message: "Buyurtma topilmadi" });
-
-  //     const givenMaterials = await MaterialGiven.find({ orderId });
-
-  //     // Umumiy kerak bo'lgan materiallar miqdorini topish
-  //     const totalRequired = order.materials.reduce(
-  //       (sum, material) => sum + material.quantity,
-  //       0
-  //     );
-
-  //     // Berilgan materiallarning umumiy miqdorini topish
-  //     const totalGiven = givenMaterials.reduce(
-  //       (sum, g) => sum + g.givenQuantity,
-  //       0
-  //     );
-
-  //     // Umumiy foiz hisoblash
-  //     const percentage =
-  //       totalRequired > 0 ? ((totalGiven / totalRequired) * 100).toFixed(2) : 0;
-  //     response.success(res, "Umumiy materiallar ta'minlanish foizi", {
-  //       percentage,
-  //     });
-  //   } catch (error) {
-  //     return response.serverError(res, "Server xatosi", error);
-  //   }
-  // };
-
-  // orderId va materialId bo‘yicha barcha mos keluvchi materiallarni olish
   static orderProgress = async (req, res) => {
     try {
       const { orderId } = req.params;
@@ -319,70 +286,6 @@ class OrderController {
     }
   }
 
-  // static async calculateDebt(req, res) {
-  //   try {
-  //     const totalDebt = await Order.aggregate([
-  //       {
-  //         $group: {
-  //           _id: null,
-  //           totalDebt: { $sum: { $subtract: ["$budget", "$paid"] } },
-  //         },
-  //       },
-  //     ]);
-
-  //     const debtAmount = totalDebt.length > 0 ? totalDebt[0].totalDebt : 0;
-  //     // Pul birligi formati bilan chiqarish
-  //     const formattedDebt = new Intl.NumberFormat("uz-UZ", {
-  //       style: "currency",
-  //       currency: "UZS",
-  //       minimumFractionDigits: 0,
-  //     }).format(debtAmount);
-
-  //     return response.success(res, "Umumiy qarz:", formattedDebt);
-  //   } catch (error) {
-  //     return response.serverError(res, "Server xatosi", error);
-  //   }
-  // }
-
-  // static async calculateDebt(req, res) {
-  //   try {
-  //     const totalDebt = await Order.aggregate([
-  //       {
-  //         $match: { isType: true }, // Faqat isType true bo'lgan mijozlarni tanlash
-  //       },
-  //       {
-  //         $group: {
-  //           _id: null,
-  //           totalBudget: { $sum: "$budget" },
-  //           totalPaid: { $sum: "$paid" },
-  //         },
-  //       },
-  //       {
-  //         $project: {
-  //           _id: 0,
-  //           totalDebt: { $subtract: ["$totalBudget", "$totalPaid"] }, // Qarzni hisoblash
-  //         },
-  //       },
-  //     ]);
-
-  //     const debtAmount = totalDebt.length > 0 ? totalDebt[0].totalDebt : 0;
-
-  //     // Pul birligi formati bilan chiqarish
-  //     const formattedDebt = new Intl.NumberFormat("uz-UZ", {
-  //       style: "currency",
-  //       currency: "UZS",
-  //       minimumFractionDigits: 0,
-  //     }).format(debtAmount);
-  //     return response.success(
-  //       res,
-  //       "isType: true bo'lgan mijozlarning umumiy qarzi:",
-  //       formattedDebt
-  //     );
-  //   } catch (error) {
-  //     return response.serverError(res, "Server xatosi", error);
-  //   }
-  // }
-
   static async calculateDebt(req, res) {
     try {
       const totalDebt = await Order.aggregate([
@@ -427,7 +330,7 @@ class OrderController {
   static async getDebtorOrders(req, res) {
     try {
       const debtors = await Order.aggregate([
-        { $match: { isType: true } }, // isType: true bo'lganlarni olish
+        { $match: { isType: true, isActive: true } }, // isType: true bo'lganlarni olish
         {
           $addFields: {
             totalBudget: { $sum: "$orders.budget" }, // orders array ichidagi budget yig'indisi
