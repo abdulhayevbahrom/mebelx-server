@@ -35,7 +35,7 @@ jobs:
           rsync -avz ./ ${{ env.SSH_USER }}@${{ env.SERVER_IP }}:${{ env.APP_DIR }}
 
       - name: Cache node modules
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: ~/.npm
           key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
