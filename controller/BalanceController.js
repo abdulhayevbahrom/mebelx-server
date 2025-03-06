@@ -19,17 +19,70 @@ class BalanceController {
 
   // Pul qo‘shish yoki ayirish
   // Add or Subtract Balance
+  // static async updateBalance(req, res) {
+  //   try {
+  //     let io = req.app.get("socket");
+  //     const { amount, type, payType } = req.body;
+
+  //     // Validate amount
+  //     if (!amount || amount <= 0) {
+  //       return Response.error(res, "Invalid amount entered");
+  //     }
+
+  //     // Determine which balance field to update based on payType
+  //     let balanceField;
+  //     if (payType === "dollar") {
+  //       balanceField = "dollarBalance";
+  //     } else if (payType === "Bank orqali") {
+  //       balanceField = "bankTransferBalance";
+  //     } else if (payType === "Naqd") {
+  //       balanceField = "cashBalance";
+  //     } else {
+  //       return Response.error(res, "Invalid payment type");
+  //     }
+
+  //     // Construct update query
+  //     let updateQuery;
+  //     if (type === "add") {
+  //       updateQuery = { $inc: { [balanceField]: amount } };
+  //     } else if (type === "subtract") {
+  //       // Check if there is enough balance before subtracting
+  //       const balance = await Balance.findOne();
+  //       if (!balance || balance[balanceField] < amount) {
+  //         return Response.error(res, "Insufficient balance");
+  //       }
+  //       updateQuery = { $inc: { [balanceField]: -amount } };
+  //     } else {
+  //       return Response.error(res, "Invalid operation type");
+  //     }
+
+  //     // Update balance using findOneAndUpdate
+  //     const updatedBalance = await Balance.findOneAndUpdate({}, updateQuery, {
+  //       new: true,
+  //       upsert: true,
+  //     });
+
+  //     io.emit("balance", updatedBalance);
+
+  //     return Response.success(res, "Balance updated successfully", {
+  //       balance: updatedBalance,
+  //     });
+  //   } catch (error) {
+  //     return Response.serverError(res, "An error occurred", error);
+  //   }
+  // }
+
   static async updateBalance(req, res) {
     try {
       let io = req.app.get("socket");
       const { amount, type, payType } = req.body;
 
-      // Validate amount
+      // Miqdorni tekshirish
       if (!amount || amount <= 0) {
-        return Response.error(res, "Invalid amount entered");
+        return Response.error(res, "Noto‘g‘ri miqdor kiritildi");
       }
 
-      // Determine which balance field to update based on payType
+      // To‘lov turi bo‘yicha qaysi balansni yangilashni aniqlash
       let balanceField;
       if (payType === "dollar") {
         balanceField = "dollarBalance";
@@ -38,25 +91,25 @@ class BalanceController {
       } else if (payType === "Naqd") {
         balanceField = "cashBalance";
       } else {
-        return Response.error(res, "Invalid payment type");
+        return Response.error(res, "Noto‘g‘ri to‘lov turi");
       }
 
-      // Construct update query
+      // Yangilash so‘rovini yaratish
       let updateQuery;
       if (type === "add") {
         updateQuery = { $inc: { [balanceField]: amount } };
       } else if (type === "subtract") {
-        // Check if there is enough balance before subtracting
+        // Balans yetarli ekanligini tekshirish
         const balance = await Balance.findOne();
         if (!balance || balance[balanceField] < amount) {
-          return Response.error(res, "Insufficient balance");
+          return Response.error(res, payType + " Balans yetarli emas");
         }
         updateQuery = { $inc: { [balanceField]: -amount } };
       } else {
-        return Response.error(res, "Invalid operation type");
+        return Response.error(res, "Noto‘g‘ri operatsiya turi");
       }
 
-      // Update balance using findOneAndUpdate
+      // findOneAndUpdate yordamida balansni yangilash
       const updatedBalance = await Balance.findOneAndUpdate({}, updateQuery, {
         new: true,
         upsert: true,
@@ -64,11 +117,11 @@ class BalanceController {
 
       io.emit("balance", updatedBalance);
 
-      return Response.success(res, "Balance updated successfully", {
+      return Response.success(res, "Balans muvaffaqiyatli yangilandi", {
         balance: updatedBalance,
       });
     } catch (error) {
-      return Response.serverError(res, "An error occurred", error);
+      return Response.serverError(res, "Xatolik yuz berdi", error);
     }
   }
 }
