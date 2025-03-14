@@ -35,10 +35,12 @@ const expenseSchema = new mongoose.Schema(
         "Boshqa chiqimlar",
         "Do'kon qarzini to'lash",
         "Do‘kondan qaytarilgan mablag",
+        "Qarzni to'lash",
 
         // Kirim (Daromad) kategoriyalari
         "Mijoz to‘lovlari",
         "Do'kondan qaytarilgan mablag",
+        "Qarz olish",
         "Investor sarmoyasi",
         "Qaytgan mablag‘",
         "Davlat subsidiyasi",

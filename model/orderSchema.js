@@ -63,9 +63,11 @@ const OrderSchema = new mongoose.Schema({
     height: { type: Number, required: true },
   },
   budget: { type: Number },
+  originalPrice: { type: Number },
   quantity: { type: Number },
   image: { type: String },
   materials: [MaterialSchema],
+  description: { type: String },
 });
 
 // Order Schema (Buyurtma ma'lumotlari)
@@ -78,9 +80,10 @@ const InfoSchema = new mongoose.Schema(
     address: { type: OrderAddressSchema, required: true },
     isType: { type: Boolean, default: true },
     isActive: { type: Boolean, default: false },
-    description: { type: String },
+    // description: { type: String },
     orders: { type: [OrderSchema], default: [] }, // Array qilib belgilash kerak
     extraExpenses: { type: Number, default: 0 },
+    nds: { type: Number, default: 0 },
   },
   { timestamps: true }
 );

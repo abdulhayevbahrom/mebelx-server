@@ -17,6 +17,10 @@ const storeController = require("../controller/storeController");
 const storeValidation = require("../validation/storeValidation");
 const optionController = require("../controller/shopsController");
 const driverController = require("../controller/driverController");
+
+const myDebtsController = require("../controller/myDebtController");
+const myDebtValidation = require("../validation/myDebtValidation");
+
 // // ADMIN
 // router.get("/admin/all", adminController.getAdmins);
 // router.post("/admin/create", adminValidation, adminController.createAdmin);
@@ -157,5 +161,11 @@ router.post("/driver/create", driverController.createDriver);
 router.delete("/driver/delete/:id", driverController.deleteDriver);
 router.put("/driver/increment/:id", driverController.incementBalance);
 router.put("/driver/decrement/:id", driverController.decrementBalance);
+
+// my debts
+router.get("/myDebts/all", myDebtsController.getMyDebts);
+router.get("/myDebts", myDebtsController.getIsPaidFalse);
+router.post("/myDebts/create", myDebtValidation, myDebtsController.postMyDebt);
+router.put("/myDebts/payment/:id", myDebtsController.paymentForDebt);
 
 module.exports = router;

@@ -36,6 +36,7 @@ class OrderController {
 
       data.paid = +data.paid;
       data.estimatedDays = +data.estimatedDays;
+      data.nds = +data.nds;
 
       for (let i = 0; i < data.orders.length; i++) {
         const file = req.files[i];
@@ -82,6 +83,8 @@ class OrderController {
           height: +item.dimensions.height,
         },
         image: item.image,
+        description: item.description,
+        originalPrice: +item.originalPrice,
       }));
 
       // **Yangi buyurtmani yaratish**
@@ -93,6 +96,8 @@ class OrderController {
       // const io = req.app.get("socket");
       // io.emit("newOrder", newOrder);
     } catch (error) {
+      console.log(error);
+
       response.serverError(res, "Serverda xatolik yuz berdi", error);
     }
   }
@@ -199,7 +204,6 @@ class OrderController {
       return response.serverError(res, "Serverda xatolik yuz berdi", error);
     }
   };
-
 
   static orderProgress = async (req, res) => {
     try {
