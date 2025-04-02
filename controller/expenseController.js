@@ -241,6 +241,8 @@ class ExpenseController {
             $match: {
               date: { $gte: startOfPeriod, $lte: endOfPeriod },
               type: "Kirim",
+              // paymentType: "Naqt",
+              category: { $ne: "Soldo" },
             },
           },
           { $group: { _id: null, totalAmount: { $sum: "$amount" } } },

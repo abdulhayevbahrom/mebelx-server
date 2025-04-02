@@ -76,13 +76,45 @@ class adminController {
     }
   }
 
+  // async updateAdmin(req, res) {
+  //   try {
+  //     const admin = await AdminDB.findByIdAndUpdate(req.params.id, req.body, {
+  //       new: true,
+  //     });
+  //     if (!admin)
+  //       return response.error(res, "Admin yangilashda xatolik", admin);
+  //     response.success(res, "Admin yangilandi", admin);
+  //   } catch (err) {
+  //     response.serverError(res, err.message, "Server xatosi");
+  //   }
+  // }
+
   async updateAdmin(req, res) {
     try {
+      const { login } = req.body;
+
+      const existingAdmin = await AdminDB.findOne({
+        login: login,
+        _id: { $ne: req.params.id },
+      });
+
+      if (existingAdmin)
+        return response.error(res, "Bu login allaqachon mavjud", null);
+
+      const salt = crypto.randomBytes(16).toString("hex");
+      let hashpassword = crypto
+        .createHash("sha256", salt)
+        .update(req.body.password)
+        .digest("hex");
+      req.body.password = `${salt}:${hashpassword}`;
+
       const admin = await AdminDB.findByIdAndUpdate(req.params.id, req.body, {
         new: true,
       });
+
       if (!admin)
         return response.error(res, "Admin yangilashda xatolik", admin);
+
       response.success(res, "Admin yangilandi", admin);
     } catch (err) {
       response.serverError(res, err.message, "Server xatosi");

@@ -117,13 +117,28 @@ class WorkerController {
   async updateWorker(req, res) {
     try {
       let io = req.app.get("socket");
-      const worker = await workersDB.findByIdAndUpdate(
-        req.params.id,
-        req.body,
-        {
-          new: true,
-        }
-      );
+      const data = JSON.parse(JSON.stringify(req.body));
+
+      const { login } = data;
+
+      const existingWorker = await workersDB.findOne({
+        login: login,
+        _id: { $ne: req.params.id },
+      });
+
+      if (existingWorker)
+        return response.error(res, "Bu login allaqachon mavjud", null);
+
+      const salt = crypto.randomBytes(16).toString("hex");
+      let hashpassword = crypto
+        .createHash("sha256", salt)
+        .update(data.password)
+        .digest("hex");
+      data.password = `${salt}:${hashpassword}`;
+
+      const worker = await workersDB.findByIdAndUpdate(req.params.id, data, {
+        new: true,
+      });
       if (!worker) return response.error(res, "Ishchi yangilashda xatolik");
       response.success(res, "Ishchi yangilandi", worker);
       io.emit("new_worker", worker);
