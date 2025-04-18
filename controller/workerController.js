@@ -1,19 +1,54 @@
 const response = require("../utils/response");
-const workersDB = require("../model/workersModel");
 const FormData = require("form-data");
 const axios = require("axios");
 const sharp = require("sharp");
 const crypto = require("crypto");
 const jwt = require("jsonwebtoken");
-const { log } = require("console");
+const workersDB = require("../model/workersModel");
+const WorkingDays = require("../model/workingDays");
+
 
 class WorkerController {
   async getWorkers(req, res) {
     try {
+      // Emit socket event
       req.app.get("socket").emit("all_worker", "salomaat");
-      const workers = await workersDB.find();
-      if (!workers.length) return response.notFound(res, "ishchilar topilmadi");
-      response.success(res, "Barcha ishchilar", workers);
+
+      // Fetch all workers
+      const workers = await workersDB.find().lean(); // Use lean() for better performance
+      if (!workers.length) {
+        return response.notFound(res, "Ishchilar topilmadi");
+      }
+
+      // Fetch the latest working days record
+      const workingDaysRecord = await WorkingDays.findOne()
+        .sort({ createdAt: -1 }) // Get the most recent record
+        .lean();
+
+      if (!workingDaysRecord) {
+        return response.notFound(res, "Ish kunlari ma'lumoti topilmadi");
+      }
+
+      const monthlyWorkingDays = workingDaysRecord.minthlyWorkingDay; // e.g., 24, 26, 28
+      const hoursPerDay = 10; // Each worker works 10 hours per day
+
+      // Calculate hourly salary for each worker
+      const workersWithHourlySalary = workers.map((worker) => {
+        const monthlySalary = worker.salary || 0; // Monthly salary, e.g., 5,000,000
+        const totalHoursInMonth = monthlyWorkingDays * hoursPerDay; // e.g., 24 * 10 = 240 hours
+        const hourlySalary =
+          totalHoursInMonth > 0
+            ? Math.round(monthlySalary / totalHoursInMonth) // Calculate hourly salary
+            : 0;
+
+        return {
+          ...worker,
+          hourlySalary, // Add hourly salary to worker object
+        };
+      });
+
+      // Send response to frontend
+      response.success(res, "Barcha ishchilar", workersWithHourlySalary);
     } catch (err) {
       response.serverError(res, err.message, err);
     }

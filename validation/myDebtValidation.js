@@ -8,27 +8,55 @@ const storeValidation = (req, res, next) => {
   const schema = {
     type: "object",
     properties: {
-      name: { type: "string" },
-      amount: { type: "number" },
-      description: { type: "string" },
-      type: { type: "string" },
+      name: { type: "string", minLength: 1, errorMessage: "Ism majburiy" },
+      debts: {
+        type: "array",
+        items: {
+          type: "object",
+          properties: {
+            amount: { type: "number", errorMessage: "Qarz summasi raqam bo'lishi kerak" },
+            date: { type: "string", format: "date-time", errorMessage: "Sana noto'g'ri formatda" }
+          },
+          required: ["amount"],
+          additionalProperties: false
+        },
+        errorMessage: "Qarzlar noto‘g‘ri kiritilgan"
+      },
+      isPaid: { type: "boolean", errorMessage: "To‘langanmi qiymati faqat true yoki false bo‘lishi kerak" },
+      description: { type: "string", errorMessage: "Izoh noto‘g‘ri formatda" },
+      type: {
+        type: "string",
+        enum: ["naqt", "dollar"],
+        errorMessage: "To‘lov turi faqat 'naqt' yoki 'dollar' bo‘lishi kerak"
+      },
+      payments: {
+        type: "array",
+        items: {
+          type: "object",
+          properties: {
+            amount: { type: "number", errorMessage: "To‘lov summasi raqam bo'lishi kerak" },
+            date: { type: "string", format: "date-time", errorMessage: "Sana noto‘g‘ri formatda" }
+          },
+          required: ["amount"],
+          additionalProperties: false
+        },
+        errorMessage: "To‘lovlar noto‘g‘ri kiritilgan"
+      }
     },
-    required: ["name", "amount"],
+    required: ["name", "type"],
     additionalProperties: false,
     errorMessage: {
       required: {
-        name: "Kimdan olindi",
-        amount: "Qarz miqdori",
-        type: "To'lov turi",
+        name: "Ism kiritilishi shart",
+        type: "To‘lov turi kiritilishi shart"
       },
       properties: {
-        name: "Kimdan olindi",
-        amount: "Qarz miqdori",
-        description: "Qo'shimcha ma'lumot",
-        type: "To'lov turi",
-      },
-    },
+        name: "Ism noto‘g‘ri formatda",
+        type: "To‘lov turi noto‘g‘ri formatda"
+      }
+    }
   };
+
   const validate = ajv.compile(schema);
   const result = validate(req.body);
   if (!result) {
@@ -38,3 +66,5 @@ const storeValidation = (req, res, next) => {
 };
 
 module.exports = storeValidation;
+
+

@@ -17,15 +17,16 @@ const storeController = require("../controller/storeController");
 const storeValidation = require("../validation/storeValidation");
 const optionController = require("../controller/shopsController");
 const driverController = require("../controller/driverController");
-
+const workingDays = require('../controller/WorkingDaysController'); // Yo'lni moslashtiring
 const myDebtsController = require("../controller/myDebtController");
 const myDebtValidation = require("../validation/myDebtValidation");
 
-// // ADMIN
-// router.get("/admin/all", adminController.getAdmins);
-// router.post("/admin/create", adminValidation, adminController.createAdmin);
-// router.delete("/admin/delete/:id", adminController.deleteAdmin);
-// router.put("/admin/update/:id", adminController.updateAdmin);
+
+// Ish kunlari yaratish
+router.post('/workingDays', workingDays.create);
+router.get('/workingDays', workingDays.getAll);
+router.delete('/workingDays/:id', workingDays.delete);
+router.put('/workingDays/:id', workingDays.update);
 
 // WORKER
 router.get("/worker/all", workerController.getWorkers);
@@ -165,7 +166,8 @@ router.put("/driver/decrement/:id", driverController.decrementBalance);
 // my debts
 router.get("/myDebts/all", myDebtsController.getMyDebts);
 router.get("/myDebts", myDebtsController.getIsPaidFalse);
-router.post("/myDebts/create", myDebtValidation, myDebtsController.postMyDebt);
+router.post("/myDebts/create", myDebtsController.postMyDebt);
 router.put("/myDebts/payment/:id", myDebtsController.paymentForDebt);
+router.put("/myDebts/:id", myDebtsController.updateMyDebt);
 
 module.exports = router;
