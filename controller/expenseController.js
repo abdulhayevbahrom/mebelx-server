@@ -1,6 +1,9 @@
 const Expense = require("../model/expense");
 const response = require("../utils/response"); // Assuming the response class is in the utils folder
 const moment = require("moment"); // For date manipulation
+const Balance = require("../model/balanceSchema");
+const { Order } = require("../model/orderSchema");
+const Orderlist = require("../model/shopsOrderList");
 
 class ExpenseController {
   // Yangi expense qo'shish
@@ -60,13 +63,93 @@ class ExpenseController {
 
   // Expense ni o'chirish
   async deleteExpense(req, res) {
+    const session = await Balance.startSession();
     try {
-      let io = req.app.get("socket");
-      const deletedExpense = await Expense.findByIdAndDelete(req.params.id);
-      if (!deletedExpense) return response.notFound(res, "Expense not found");
-      io.emit("newExpense", deletedExpense);
+      const io = req.app.get("socket");
+      await session.withTransaction(async () => {
+        const balance = await Balance.findOne().session(session);
+        const expense = await Expense.findById(req.params.id).session(session);
+
+        if (!expense) {
+          throw new Error("Expense not found");
+        }
+
+        if (expense.type === "Chiqim") {
+          if (expense.paymentType === "Naqd") {
+            balance.cashBalance += expense.amount;
+          } else if (expense.paymentType === "Bank orqali") {
+            balance.bankTransferBalance += expense.amount;
+          } else if (expense.paymentType === "dollar") {
+            balance.dollarBalance += expense.amount;
+          }
+        } else if (expense.type === "Kirim") {
+          if (expense.paymentType === "Naqd") {
+            balance.cashBalance -= expense.amount;
+          } else if (expense.paymentType === "Bank orqali") {
+            balance.bankTransferBalance -= expense.amount;
+          } else if (expense.paymentType === "dollar") {
+            balance.dollarBalance -= expense.amount;
+          }
+        }
+
+        // mijoz tolovlarini qaytarish
+        if (expense.category === "Mijoz to‘lovlari") {
+          const mijoz = await Order.findById(expense.relevantId).session(
+            session
+          );
+          if (!mijoz) {
+            throw new Error("Order not found");
+          }
+          let paid = mijoz.paid - expense.amount;
+          await Order.findByIdAndUpdate(
+            expense.relevantId,
+            { paid },
+            { new: true, session }
+          );
+        }
+
+        // do'kon qarzini to'lashni qaytarish
+        if (expense.category === "Do'kon qarzini to'lash") {
+          const shop = await Orderlist.findById(expense.relevantId).session(
+            session
+          );
+          if (!shop) return response.notFound(res, "Shop not found");
+
+          let newPaid = shop.paid;
+          let newReturnedMoney = shop.returnedMoney;
+
+          if (newReturnedMoney >= expense.amount) {
+            newReturnedMoney -= expense.amount;
+          } else {
+            let totalPaid = newReturnedMoney + newPaid;
+            newReturnedMoney = 0;
+            newPaid = totalPaid - expense.amount;
+          }
+
+          // yangi isPaid tekshiruvi
+          let newIsPaid = newPaid >= shop.totalAmount;
+
+          await Orderlist.findByIdAndUpdate(
+            shop._id,
+            {
+              paid: newPaid,
+              returnedMoney: newReturnedMoney,
+              isPaid: newIsPaid,
+            },
+            { new: true, session }
+          );
+        }
+
+        await balance.save({ session });
+        await Expense.findByIdAndDelete(req.params.id).session(session);
+      });
+
+      session.endSession();
       response.success(res, "Expense deleted successfully");
+      io.emit("deleteExpense", "deleted");
     } catch (error) {
+      await session.abortTransaction();
+      session.endSession();
       response.serverError(res, error.message);
     }
   }
@@ -297,7 +380,6 @@ class ExpenseController {
   //   }
   // };
 
-
   // Expense ni relevantId va date bo'yicha olish
 
   getBalanceReport = async (req, res) => {
@@ -333,61 +415,70 @@ class ExpenseController {
 
       const formatUzbekDate = (date) => {
         const momentDate = moment(date, "YYYY-MM-DD");
-        return `${momentDate.format("D")} -${uzMonthMapping[momentDate.format("MM")]} `;
+        return `${momentDate.format("D")} -${
+          uzMonthMapping[momentDate.format("MM")]
+        } `;
       };
 
-      const formattedPeriod = `${formatUzbekDate(startOfPeriod)} - ${formatUzbekDate(endOfPeriod)} `;
+      const formattedPeriod = `${formatUzbekDate(
+        startOfPeriod
+      )} - ${formatUzbekDate(endOfPeriod)} `;
 
       // MongoDB'dan daromad, chiqim, soldo va kunlik hisobotlarni olish
-      const [incomeResult, outgoingResult, soldoResult, dailyReport] = await Promise.all([
-        Expense.aggregate([
-          {
-            $match: {
-              date: { $gte: startOfPeriod, $lte: endOfPeriod },
-              type: "Kirim",
-              category: { $ne: "Soldo" },
-            },
-          },
-          { $group: { _id: null, totalAmount: { $sum: "$amount" } } },
-        ]),
-        Expense.aggregate([
-          {
-            $match: {
-              date: { $gte: startOfPeriod, $lte: endOfPeriod },
-              type: "Chiqim",
-            },
-          },
-          { $group: { _id: null, totalAmount: { $sum: "$amount" } } },
-        ]),
-        Expense.aggregate([
-          {
-            $match: {
-              date: { $gte: startOfPeriod, $lte: endOfPeriod },
-              type: "Kirim",
-              category: "Soldo",
-            },
-          },
-          { $group: { _id: null, totalAmount: { $sum: "$amount" } } },
-        ]),
-        Expense.aggregate([
-          { $match: { date: { $gte: startOfPeriod, $lte: endOfPeriod } } },
-          {
-            $group: {
-              _id: { $dateToString: { format: "%Y-%m-%d", date: "$date" } },
-              income: {
-                $sum: { $cond: [{ $eq: ["$type", "Kirim"] }, "$amount", 0] },
-              },
-              outgoing: {
-                $sum: { $cond: [{ $eq: ["$type", "Chiqim"] }, "$amount", 0] },
+      const [incomeResult, outgoingResult, soldoResult, dailyReport] =
+        await Promise.all([
+          Expense.aggregate([
+            {
+              $match: {
+                date: { $gte: startOfPeriod, $lte: endOfPeriod },
+                type: "Kirim",
+                category: { $ne: "Soldo" },
               },
             },
-          },
-          { $sort: { _id: 1 } },
-        ]),
-      ]);
+            { $group: { _id: null, totalAmount: { $sum: "$amount" } } },
+          ]),
+          Expense.aggregate([
+            {
+              $match: {
+                date: { $gte: startOfPeriod, $lte: endOfPeriod },
+                type: "Chiqim",
+              },
+            },
+            { $group: { _id: null, totalAmount: { $sum: "$amount" } } },
+          ]),
+          Expense.aggregate([
+            {
+              $match: {
+                date: { $gte: startOfPeriod, $lte: endOfPeriod },
+                type: "Kirim",
+                category: "Soldo",
+              },
+            },
+            { $group: { _id: null, totalAmount: { $sum: "$amount" } } },
+          ]),
+          Expense.aggregate([
+            { $match: { date: { $gte: startOfPeriod, $lte: endOfPeriod } } },
+            {
+              $group: {
+                _id: { $dateToString: { format: "%Y-%m-%d", date: "$date" } },
+                income: {
+                  $sum: { $cond: [{ $eq: ["$type", "Kirim"] }, "$amount", 0] },
+                },
+                outgoing: {
+                  $sum: { $cond: [{ $eq: ["$type", "Chiqim"] }, "$amount", 0] },
+                },
+              },
+            },
+            { $sort: { _id: 1 } },
+          ]),
+        ]);
 
-      const incomeAmount = incomeResult.length ? incomeResult[0].totalAmount : 0;
-      const outgoingAmount = outgoingResult.length ? outgoingResult[0].totalAmount : 0;
+      const incomeAmount = incomeResult.length
+        ? incomeResult[0].totalAmount
+        : 0;
+      const outgoingAmount = outgoingResult.length
+        ? outgoingResult[0].totalAmount
+        : 0;
       const soldoAmount = soldoResult.length ? soldoResult[0].totalAmount : 0;
       const balance = incomeAmount - outgoingAmount;
       console.log(incomeAmount, outgoingAmount);
