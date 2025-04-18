@@ -10,7 +10,7 @@ const workersSchema = new mongoose.Schema(
     phone: { type: String, required: true, unique: true },
     idNumber: { type: String, required: true },
     password: { type: String },
-    salary: { type: String, default: "0" }, // Maosh
+    salary: { type: Number, default: 0 }, // Maosh (now Number for calculations)
     login: { type: String },
     workerType: { type: String },
     img: { type: String },
@@ -28,14 +28,12 @@ const workersSchema = new mongoose.Schema(
       default: "worker",
     },
   },
-  { timestamps: true, strict: "remove", toJSON: { virtuals: true } }
+  { timestamps: true, toJSON: { virtuals: true } }
 );
 
-// ** Virtual Field ** - Soatlik maoshni hisoblash
-workersSchema.virtual("hourlySalary").get(function () {
-  const totalHours = 260; // Oylik ish soati
-  const monthlySalary = parseFloat(this.salary) || 0;
-  return totalHours > 0 ? (monthlySalary / totalHours).toFixed(2) : "0";
-});
 
-module.exports = mongoose.model("workers", workersSchema);
+module.exports = mongoose.model("Workers", workersSchema);
+
+
+
+

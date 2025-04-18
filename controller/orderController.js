@@ -195,8 +195,7 @@ class OrderController {
 
       return response.success(
         res,
-        `Material muvaffaqiyatli berildi: ${givenQuantity} ${
-          material.unit || storeMaterial.unit
+        `Material muvaffaqiyatli berildi: ${givenQuantity} ${material.unit || storeMaterial.unit
         }!`,
         givenMaterial
       );
