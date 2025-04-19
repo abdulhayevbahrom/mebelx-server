@@ -230,60 +230,6 @@ class ExpenseController {
 
       const formattedPeriod = `${formatUzbekDate(startOfPeriod)} - ${formatUzbekDate(endOfPeriod)} `;
 
-      // MongoDB'dan daromad, chiqim, soldo va kunlik hisobotlarni olish
-      // const [incomeResult, outgoingResult, soldoResult, dailyReport] = await Promise.all([
-      //   Expense.aggregate([
-      //     {
-      //       $match: {
-      //         date: { $gte: startOfPeriod, $lte: endOfPeriod },
-      //         type: "Kirim",
-      //         category: { $ne: "Soldo" },
-      //       },
-      //     },
-      //     { $group: { _id: null, totalAmount: { $sum: "$amount" } } },
-      //   ]),
-      //   Expense.aggregate([
-      //     {
-      //       $match: {
-      //         date: { $gte: startOfPeriod, $lte: endOfPeriod },
-      //         type: "Chiqim",
-      //       },
-      //     },
-      //     { $group: { _id: null, totalAmount: { $sum: "$amount" } } },
-      //   ]),
-      //   Expense.aggregate([
-      //     {
-      //       $match: {
-      //         date: { $gte: startOfPeriod, $lte: endOfPeriod },
-      //         type: "Kirim",
-      //         category: "Soldo",
-      //       },
-      //     },
-      //     { $group: { _id: null, totalAmount: { $sum: "$amount" } } },
-      //   ]),
-      //   Expense.aggregate([
-      //     { $match: { date: { $gte: startOfPeriod, $lte: endOfPeriod } } },
-      //     {
-      //       $group: {
-      //         _id: { $dateToString: { format: "%Y-%m-%d", date: "$date" } },
-      //         income: {
-      //           $sum: { $cond: [{ $eq: ["$type", "Kirim"] }, "$amount", 0] },
-      //         },
-      //         outgoing: {
-      //           $sum: { $cond: [{ $eq: ["$type", "Chiqim"] }, "$amount", 0] },
-      //         },
-      //       },
-      //     },
-      //     { $sort: { _id: 1 } },
-      //   ]),
-      // ]);
-
-      // const incomeAmount = incomeResult.length ? incomeResult[0].totalAmount : 0;
-      // const outgoingAmount = outgoingResult.length ? outgoingResult[0].totalAmount : 0;
-      // const soldoAmount = soldoResult.length ? soldoResult[0].totalAmount : 0;
-      // const balance = incomeAmount - outgoingAmount;
-
-
       const [incomeResult, outgoingResult, soldoResult, qarzResult, dailyReport] = await Promise.all([
         Expense.aggregate([
           {
