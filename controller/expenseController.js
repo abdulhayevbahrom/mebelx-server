@@ -1,3 +1,6 @@
+const Balance = require("../model/balanceSchema");
+const { Order } = require("../model/orderSchema");
+const Orderlist = require("../model/shopsOrderList");
 const Expense = require("../model/expense");
 const response = require("../utils/response"); // Assuming the response class is in the utils folder
 const moment = require("moment"); // For date manipulation
@@ -60,13 +63,93 @@ class ExpenseController {
 
   // Expense ni o'chirish
   async deleteExpense(req, res) {
+    const session = await Balance.startSession();
     try {
-      let io = req.app.get("socket");
-      const deletedExpense = await Expense.findByIdAndDelete(req.params.id);
-      if (!deletedExpense) return response.notFound(res, "Expense not found");
-      io.emit("newExpense", deletedExpense);
+      const io = req.app.get("socket");
+      await session.withTransaction(async () => {
+        const balance = await Balance.findOne().session(session);
+        const expense = await Expense.findById(req.params.id).session(session);
+
+        if (!expense) {
+          throw new Error("Expense not found");
+        }
+
+        if (expense.type === "Chiqim") {
+          if (expense.paymentType === "Naqd") {
+            balance.cashBalance += expense.amount;
+          } else if (expense.paymentType === "Bank orqali") {
+            balance.bankTransferBalance += expense.amount;
+          } else if (expense.paymentType === "dollar") {
+            balance.dollarBalance += expense.amount;
+          }
+        } else if (expense.type === "Kirim") {
+          if (expense.paymentType === "Naqd") {
+            balance.cashBalance -= expense.amount;
+          } else if (expense.paymentType === "Bank orqali") {
+            balance.bankTransferBalance -= expense.amount;
+          } else if (expense.paymentType === "dollar") {
+            balance.dollarBalance -= expense.amount;
+          }
+        }
+
+        // mijoz tolovlarini qaytarish
+        if (expense.category === "Mijoz to‘lovlari") {
+          const mijoz = await Order.findById(expense.relevantId).session(
+            session
+          );
+          if (!mijoz) {
+            throw new Error("Order not found");
+          }
+          let paid = mijoz.paid - expense.amount;
+          await Order.findByIdAndUpdate(
+            expense.relevantId,
+            { paid },
+            { new: true, session }
+          );
+        }
+
+        // do'kon qarzini to'lashni qaytarish
+        if (expense.category === "Do'kon qarzini to'lash") {
+          const shop = await Orderlist.findById(expense.relevantId).session(
+            session
+          );
+          if (!shop) return response.notFound(res, "Shop not found");
+
+          let newPaid = shop.paid;
+          let newReturnedMoney = shop.returnedMoney;
+
+          if (newReturnedMoney >= expense.amount) {
+            newReturnedMoney -= expense.amount;
+          } else {
+            let totalPaid = newReturnedMoney + newPaid;
+            newReturnedMoney = 0;
+            newPaid = totalPaid - expense.amount;
+          }
+
+          // yangi isPaid tekshiruvi
+          let newIsPaid = newPaid >= shop.totalAmount;
+
+          await Orderlist.findByIdAndUpdate(
+            shop._id,
+            {
+              paid: newPaid,
+              returnedMoney: newReturnedMoney,
+              isPaid: newIsPaid,
+            },
+            { new: true, session }
+          );
+        }
+
+        await balance.save({ session });
+        await Expense.findByIdAndDelete(req.params.id).session(session);
+      });
+
+      session.endSession();
       response.success(res, "Expense deleted successfully");
+      io.emit("deleteExpense", "deleted");
     } catch (error) {
+      await session.abortTransaction();
+      session.endSession();
       response.serverError(res, error.message);
     }
   }
@@ -127,9 +210,7 @@ class ExpenseController {
       // Agar tanlangan davrda hujjat topilmasa
       if ((!results, !results[0], !results[0].all.length)) {
         return response.notFound(res, "No expenses found for the given period");
-      }
-
-      // Moment locale-ni o'zbek tilida sozlaymiz
+      } // Moment locale-ni o'zbek tilida sozlaymiz
       moment.locale("uz");
       // Avval "D-MMMM" formatida sanalarni olamiz
       const formattedStartRaw = moment(startOfPeriod).format("D-MMMM");
@@ -225,12 +306,20 @@ class ExpenseController {
 
       const formatUzbekDate = (date) => {
         const momentDate = moment(date, "YYYY-MM-DD");
-        return `${momentDate.format("D")} -${uzMonthMapping[momentDate.format("MM")]} `;
+        return `${momentDate.format("D")} -${uzMonthMapping[momentDate.format("MM")]
+          } `;
       };
 
-      const formattedPeriod = `${formatUzbekDate(startOfPeriod)} - ${formatUzbekDate(endOfPeriod)} `;
-
-      const [incomeResult, outgoingResult, soldoResult, qarzResult, dailyReport] = await Promise.all([
+      const formattedPeriod = `${formatUzbekDate(
+        startOfPeriod
+      )} - ${formatUzbekDate(endOfPeriod)} `;
+      const [
+        incomeResult,
+        outgoingResult,
+        soldoResult,
+        qarzResult,
+        dailyReport,
+      ] = await Promise.all([
         Expense.aggregate([
           {
             $match: {
@@ -282,7 +371,12 @@ class ExpenseController {
               income: {
                 $sum: {
                   $cond: [
-                    { $and: [{ $eq: ["$type", "Kirim"] }, { $ne: ["$category", "Qarz olish"] }] },
+                    {
+                      $and: [
+                        { $eq: ["$type", "Kirim"] },
+                        { $ne: ["$category", "Qarz olish"] },
+                      ],
+                    },
                     "$amount",
                     0,
                   ],
@@ -297,13 +391,17 @@ class ExpenseController {
         ]),
       ]);
 
-      const incomeAmount = incomeResult.length ? incomeResult[0].totalAmount : 0;
-      const outgoingAmount = outgoingResult.length ? outgoingResult[0].totalAmount : 0;
+      const incomeAmount = incomeResult.length
+        ? incomeResult[0].totalAmount
+        : 0;
+      const outgoingAmount = outgoingResult.length
+        ? outgoingResult[0].totalAmount
+        : 0;
       const soldoAmount = soldoResult.length ? soldoResult[0].totalAmount : 0;
       const qarzAmount = qarzResult.length ? qarzResult[0].totalAmount : 0;
 
       // Subtract qarzAmount from balance
-      const balance = incomeAmount - outgoingAmount
+      const balance = incomeAmount - outgoingAmount;
 
       return response.success(res, "Balance report generated successfully", {
         formattedPeriod,
@@ -357,7 +455,6 @@ class ExpenseController {
           "Expenses not found for the given relevantId and date"
         );
       }
-
       response.success(res, "Expenses fetched successfully", expenses);
     } catch (error) {
       response.serverError(res, error.message);
