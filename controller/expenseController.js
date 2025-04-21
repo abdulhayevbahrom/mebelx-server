@@ -42,21 +42,113 @@ class ExpenseController {
     }
   }
 
-  // Expense ni yangilash
   async updateExpense(req, res) {
+    const session = await Expense.startSession();
+    session.startTransaction();
     try {
-      let io = req.app.get("socket");
-      const { name, amount, amountType, description } = req.body;
-      const updatedExpense = await Expense.findByIdAndUpdate(
-        req.params.id,
-        { name, amount, amountType, description },
-        { new: true }
-      );
-      if (!updatedExpense) return response.notFound(res, "Expense not found");
-      io.emit("newExpense", updatedExpense);
+      const { amount, paymentType, type, category } = req.body;
+      const expenseId = req.params.id;
 
-      response.success(res, "Expense updated successfully", updatedExpense);
+      let oldExpense = await Expense.findById(expenseId).session(session);
+      if (!oldExpense) {
+        await session.abortTransaction();
+        session.endSession();
+        return response.notFound(res, "Expense not found");
+      }
+
+      let oldAmount = oldExpense.amount;
+      let amountState = amount > oldAmount ? "add" : "subtract";
+
+      if (amountState === "add") {
+        oldExpense.amount = amount;
+      } else {
+        oldExpense.amount -= amount;
+      }
+      await oldExpense.save({ session });
+
+      const balance = await Balance.findOne().session(session);
+
+      if (type === "Chiqim") {
+        if (oldExpense.paymentType === "Naqd") balance.cashBalance += oldAmount;
+        if (oldExpense.paymentType === "dollar")
+          balance.dollarBalance += oldAmount;
+        if (oldExpense.paymentType === "Bank orqali")
+          balance.bankTransferBalance += oldAmount;
+
+        if (paymentType === "Naqd") balance.cashBalance -= amount;
+        if (paymentType === "dollar") balance.dollarBalance -= amount;
+        if (paymentType === "Bank orqali")
+          balance.bankTransferBalance -= amount;
+      }
+
+      if (type === "Kirim") {
+        if (oldExpense.paymentType === "Naqd") balance.cashBalance -= oldAmount;
+        if (oldExpense.paymentType === "dollar")
+          balance.dollarBalance -= oldAmount;
+        if (oldExpense.paymentType === "Bank orqali")
+          balance.bankTransferBalance -= oldAmount;
+
+        if (paymentType === "Naqd") balance.cashBalance += amount;
+        if (paymentType === "dollar") balance.dollarBalance += amount;
+        if (paymentType === "Bank orqali")
+          balance.bankTransferBalance += amount;
+      }
+
+      await balance.save({ session });
+
+      if (category === "Mijoz to‘lovlari") {
+        const mijoz = await Order.findById(oldExpense.relevantId).session(
+          session
+        );
+        if (!mijoz) {
+          await session.abortTransaction();
+          session.endSession();
+          throw new Error("Order not found");
+        }
+        mijoz.paid = mijoz.paid - oldAmount + amount;
+        await mijoz.save({ session });
+      }
+
+      if (category === "Do'kon qarzini to'lash") {
+        const shop = await Orderlist.findById(oldExpense.relevantId).session(
+          session
+        );
+        if (!shop) {
+          await session.abortTransaction();
+          session.endSession();
+          return response.notFound(res, "Shop not found");
+        }
+
+        let newPaid = shop.paid;
+        let newReturnedMoney = shop.returnedMoney;
+
+        if (newReturnedMoney >= amount) {
+          newReturnedMoney -= amount;
+        } else {
+          let totalPaid = newReturnedMoney + newPaid;
+          newReturnedMoney = 0;
+          newPaid = totalPaid - amount;
+        }
+
+        let newIsPaid = newPaid >= shop.totalAmount;
+
+        await Orderlist.findByIdAndUpdate(
+          shop._id,
+          {
+            paid: newPaid,
+            returnedMoney: newReturnedMoney,
+            isPaid: newIsPaid,
+          },
+          { new: true, session }
+        );
+      }
+
+      await session.commitTransaction();
+      session.endSession();
+      response.success(res, "Expense updated successfully", oldExpense);
     } catch (error) {
+      await session.abortTransaction();
+      session.endSession();
       response.error(res, error.message);
     }
   }
@@ -92,7 +184,7 @@ class ExpenseController {
           }
         }
 
-        // mijoz tolovlarini qaytarish
+        // mijoz tolovlarini
         if (expense.category === "Mijoz to‘lovlari") {
           const mijoz = await Order.findById(expense.relevantId).session(
             session
@@ -108,7 +200,7 @@ class ExpenseController {
           );
         }
 
-        // do'kon qarzini to'lashni qaytarish
+        // do'kon qarzini to'lashni
         if (expense.category === "Do'kon qarzini to'lash") {
           const shop = await Orderlist.findById(expense.relevantId).session(
             session
@@ -139,6 +231,8 @@ class ExpenseController {
             { new: true, session }
           );
         }
+
+        // tashqi qarz ni to'lashni
 
         await balance.save({ session });
         await Expense.findByIdAndDelete(req.params.id).session(session);
