@@ -70,18 +70,26 @@ class MyDebtController {
 
   async updateMyDebt(req, res) {
     try {
-      let io = req.app.get("socket");
-      const myDebt = await MyDebt.findById(req.params.id);
-      if (!myDebt) return response.notFound(res, "MyDebt not found");
+      const { id } = req.params;
+      const { amount, isPaid, description, type } = req.body;
 
-      // Push new debt amount to the debts array
-      myDebt.debts.push({ amount: req.body.amount, date: new Date() });
-      myDebt.description = req.body.description || myDebt.description;
-      myDebt.type = req.body.type || myDebt.type;
+      // Find and update debt in a single query
+      const myDebt = await MyDebt.findByIdAndUpdate(
+        id,
+        {
+          $push: {
+            [isPaid ? 'payments' : 'debts']: { amount, type, description, date: new Date() }
+          }
+        },
+        { new: true, runValidators: true }
+      );
 
-      const updatedMyDebt = await myDebt.save();
-      io.emit("updateMyDebt", updatedMyDebt);
-      return response.success(res, "MyDebt updated", updatedMyDebt);
+      if (!myDebt) {
+        return response.notFound(res, 'MyDebt not found');
+      }
+
+      req.app.get('socket').emit('updateMyDebt', myDebt);
+      return response.success(res, 'MyDebt updated', myDebt);
     } catch (err) {
       return response.serverError(res, err.message);
     }

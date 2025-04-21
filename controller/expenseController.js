@@ -400,9 +400,8 @@ class ExpenseController {
 
       const formatUzbekDate = (date) => {
         const momentDate = moment(date, "YYYY-MM-DD");
-        return `${momentDate.format("D")} -${
-          uzMonthMapping[momentDate.format("MM")]
-        } `;
+        return `${momentDate.format("D")} -${uzMonthMapping[momentDate.format("MM")]
+          } `;
       };
 
       const formattedPeriod = `${formatUzbekDate(
