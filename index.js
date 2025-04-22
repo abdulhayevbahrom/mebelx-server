@@ -10,8 +10,8 @@ const authMiddleware = require("./middleware/AuthMiddleware");
 const { createServer } = require("node:http");
 const soket = require("./socket");
 const app = express();
-const server = createServer(app);
 const io = require("./middleware/socket.header")(server);
+const server = createServer(app);
 
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
