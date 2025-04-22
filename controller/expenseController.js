@@ -45,9 +45,11 @@ class ExpenseController {
   async updateExpense(req, res) {
     const session = await Expense.startSession();
     session.startTransaction();
+    let io = req.app.get("socket");
     try {
-      const { amount, paymentType, type, category } = req.body;
+      const { amount: newAmount, paymentType, type, category } = req.body;
       const expenseId = req.params.id;
+      let amount = +newAmount;
 
       let oldExpense = await Expense.findById(expenseId).session(session);
       if (!oldExpense) {
@@ -56,15 +58,20 @@ class ExpenseController {
         return response.notFound(res, "Expense not found");
       }
 
-      let oldAmount = oldExpense.amount;
+      let oldAmount = +oldExpense.amount;
       let amountState = amount > oldAmount ? "add" : "subtract";
-
+      let oldExpenseAmount = +oldExpense.amount;
       if (amountState === "add") {
-        oldExpense.amount = amount;
+        oldExpenseAmount = +amount;
       } else {
-        oldExpense.amount -= amount;
+        oldExpenseAmount -= amount;
       }
-      await oldExpense.save({ session });
+      // await oldExpense.save({ session });
+      await Expense.findByIdAndUpdate(
+        expenseId,
+        { ...req.body, amount: oldExpenseAmount },
+        { session }
+      );
 
       const balance = await Balance.findOne().session(session);
 
@@ -123,11 +130,11 @@ class ExpenseController {
         let newReturnedMoney = shop.returnedMoney;
 
         if (newReturnedMoney >= amount) {
-          newReturnedMoney -= amount;
+          newReturnedMoney -= oldAmount;
+          newReturnedMoney += amount;
         } else {
-          let totalPaid = newReturnedMoney + newPaid;
-          newReturnedMoney = 0;
-          newPaid = totalPaid - amount;
+          let totalPaid = newPaid + newReturnedMoney;
+          newPaid = totalPaid - oldAmount + amount;
         }
 
         let newIsPaid = newPaid >= shop.totalAmount;
@@ -146,6 +153,7 @@ class ExpenseController {
       await session.commitTransaction();
       session.endSession();
       response.success(res, "Expense updated successfully", oldExpense);
+      io.emit("newExpense", oldExpense);
     } catch (error) {
       await session.abortTransaction();
       session.endSession();
@@ -157,7 +165,6 @@ class ExpenseController {
   async deleteExpense(req, res) {
     const session = await Balance.startSession();
     try {
-      const io = req.app.get("socket");
       await session.withTransaction(async () => {
         const balance = await Balance.findOne().session(session);
         const expense = await Expense.findById(req.params.id).session(session);
@@ -184,7 +191,7 @@ class ExpenseController {
           }
         }
 
-        // mijoz tolovlarini
+        // mijoz tolovlari
         if (expense.category === "Mijoz to‘lovlari") {
           const mijoz = await Order.findById(expense.relevantId).session(
             session
@@ -200,12 +207,14 @@ class ExpenseController {
           );
         }
 
-        // do'kon qarzini to'lashni
+        // do'kon qarzlari
         if (expense.category === "Do'kon qarzini to'lash") {
           const shop = await Orderlist.findById(expense.relevantId).session(
             session
           );
-          if (!shop) return response.notFound(res, "Shop not found");
+          if (!shop) {
+            throw new Error("Shop not found");
+          }
 
           let newPaid = shop.paid;
           let newReturnedMoney = shop.returnedMoney;
@@ -218,7 +227,6 @@ class ExpenseController {
             newPaid = totalPaid - expense.amount;
           }
 
-          // yangi isPaid tekshiruvi
           let newIsPaid = newPaid >= shop.totalAmount;
 
           await Orderlist.findByIdAndUpdate(
@@ -232,19 +240,18 @@ class ExpenseController {
           );
         }
 
-        // tashqi qarz ni to'lashni
-
         await balance.save({ session });
         await Expense.findByIdAndDelete(req.params.id).session(session);
       });
 
-      session.endSession();
       response.success(res, "Expense deleted successfully");
+      const io = req.app.get("socket");
       io.emit("deleteExpense", "deleted");
+      io.emit("newExpense", "deleted");
     } catch (error) {
-      await session.abortTransaction();
-      session.endSession();
       response.serverError(res, error.message);
+    } finally {
+      await session.endSession();
     }
   }
 
@@ -400,8 +407,9 @@ class ExpenseController {
 
       const formatUzbekDate = (date) => {
         const momentDate = moment(date, "YYYY-MM-DD");
-        return `${momentDate.format("D")} -${uzMonthMapping[momentDate.format("MM")]
-          } `;
+        return `${momentDate.format("D")} -${
+          uzMonthMapping[momentDate.format("MM")]
+        } `;
       };
 
       const formattedPeriod = `${formatUzbekDate(
