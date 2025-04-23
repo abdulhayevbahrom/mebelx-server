@@ -7,7 +7,6 @@ const jwt = require("jsonwebtoken");
 const workersDB = require("../model/workersModel");
 const WorkingDays = require("../model/workingDays");
 
-
 class WorkerController {
   async getWorkers(req, res) {
     try {
@@ -26,7 +25,8 @@ class WorkerController {
         .lean();
 
       if (!workingDaysRecord) {
-        return response.notFound(res, "Ish kunlari ma'lumoti topilmadi");
+        await WorkingDays.create({ minthlyWorkingDay: 26 });
+        // return response.notFound(res, "Ish kunlari ma'lumoti topilmadi");
       }
 
       const monthlyWorkingDays = workingDaysRecord.minthlyWorkingDay; // e.g., 24, 26, 28
