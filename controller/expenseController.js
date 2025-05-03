@@ -374,6 +374,155 @@ class ExpenseController {
     }
   }
 
+  // getBalanceReport = async (req, res) => {
+  //   try {
+  //     const { startDate, endDate } = req.body;
+  //     if (!startDate || !endDate) {
+  //       return response.badRequest(res, "Start date and end date are required");
+  //     }
+
+  //     const startOfPeriod = moment(startDate, "YYYY-MM-DD")
+  //       .startOf("day")
+  //       .toDate();
+  //     const endOfPeriod = moment(endDate, "YYYY-MM-DD").endOf("day").toDate();
+
+  //     if (startOfPeriod > endOfPeriod) {
+  //       return response.badRequest(res, "Start date must be before end date");
+  //     }
+
+  //     const uzMonthMapping = {
+  //       "01": "Yanvar",
+  //       "02": "Fevral",
+  //       "03": "Mart",
+  //       "04": "Aprel",
+  //       "05": "May",
+  //       "06": "Iyun",
+  //       "07": "Iyul",
+  //       "08": "Avgust",
+  //       "09": "Sentabr",
+  //       10: "Oktabr",
+  //       11: "Noyabr",
+  //       12: "Dekabr",
+  //     };
+
+  //     const formatUzbekDate = (date) => {
+  //       const momentDate = moment(date, "YYYY-MM-DD");
+  //       return `${momentDate.format("D")} -${
+  //         uzMonthMapping[momentDate.format("MM")]
+  //       } `;
+  //     };
+
+  //     const formattedPeriod = `${formatUzbekDate(
+  //       startOfPeriod
+  //     )} - ${formatUzbekDate(endOfPeriod)} `;
+  //     const [
+  //       incomeResult,
+  //       outgoingResult,
+  //       soldoResult,
+  //       qarzResult,
+  //       dailyReport,
+  //     ] = await Promise.all([
+  //       Expense.aggregate([
+  //         {
+  //           $match: {
+  //             date: { $gte: startOfPeriod, $lte: endOfPeriod },
+  //             type: "Kirim",
+  //             category: { $ne: "Soldo", $ne: "Qarz olish" }, // Exclude both Soldo and Qarz olish
+  //           },
+  //         },
+  //         { $group: { _id: null, totalAmount: { $sum: "$amount" } } },
+  //       ]),
+  //       Expense.aggregate([
+  //         {
+  //           $match: {
+  //             date: { $gte: startOfPeriod, $lte: endOfPeriod },
+  //             type: "Chiqim",
+  //           },
+  //         },
+  //         { $group: { _id: null, totalAmount: { $sum: "$amount" } } },
+  //       ]),
+  //       Expense.aggregate([
+  //         {
+  //           $match: {
+  //             date: { $gte: startOfPeriod, $lte: endOfPeriod },
+  //             type: "Kirim",
+  //             category: "Soldo",
+  //           },
+  //         },
+  //         { $group: { _id: null, totalAmount: { $sum: "$amount" } } },
+  //       ]),
+  //       Expense.aggregate([
+  //         {
+  //           $match: {
+  //             date: { $gte: startOfPeriod, $lte: endOfPeriod },
+  //             type: "Kirim",
+  //             category: "Qarz olish",
+  //           },
+  //         },
+  //         { $group: { _id: null, totalAmount: { $sum: "$amount" } } },
+  //       ]),
+  //       Expense.aggregate([
+  //         {
+  //           $match: {
+  //             date: { $gte: startOfPeriod, $lte: endOfPeriod },
+  //           },
+  //         },
+  //         {
+  //           $group: {
+  //             _id: { $dateToString: { format: "%Y-%m-%d", date: "$date" } },
+  //             income: {
+  //               $sum: {
+  //                 $cond: [
+  //                   {
+  //                     $and: [
+  //                       { $eq: ["$type", "Kirim"] },
+  //                       { $ne: ["$category", "Qarz olish"] },
+  //                     ],
+  //                   },
+  //                   "$amount",
+  //                   0,
+  //                 ],
+  //               },
+  //             },
+  //             outgoing: {
+  //               $sum: { $cond: [{ $eq: ["$type", "Chiqim"] }, "$amount", 0] },
+  //             },
+  //           },
+  //         },
+  //         { $sort: { _id: 1 } },
+  //       ]),
+  //     ]);
+
+  //     const incomeAmount = incomeResult.length
+  //       ? incomeResult[0].totalAmount
+  //       : 0;
+  //     const outgoingAmount = outgoingResult.length
+  //       ? outgoingResult[0].totalAmount
+  //       : 0;
+  //     const soldoAmount = soldoResult.length ? soldoResult[0].totalAmount : 0;
+  //     const qarzAmount = qarzResult.length ? qarzResult[0].totalAmount : 0;
+
+  //     // Subtract qarzAmount from balance
+  //     const balance = incomeAmount - outgoingAmount;
+
+  //     return response.success(res, "Balance report generated successfully", {
+  //       formattedPeriod,
+  //       incomeAmount,
+  //       outgoingAmount,
+  //       soldoAmount,
+  //       balance,
+  //       chartData: dailyReport.map(({ _id, income, outgoing }) => ({
+  //         date: formatUzbekDate(_id),
+  //         income,
+  //         outgoing,
+  //       })),
+  //     });
+  //   } catch (error) {
+  //     console.error(error);
+  //     return response.serverError(res, "Xatolik yuz berdi", error.message);
+  //   }
+  // };
+
   getBalanceReport = async (req, res) => {
     try {
       const { startDate, endDate } = req.body;
@@ -407,9 +556,8 @@ class ExpenseController {
 
       const formatUzbekDate = (date) => {
         const momentDate = moment(date, "YYYY-MM-DD");
-        return `${momentDate.format("D")} -${
-          uzMonthMapping[momentDate.format("MM")]
-        } `;
+        return `${momentDate.format("D")} -${uzMonthMapping[momentDate.format("MM")]
+          } `;
       };
 
       const formattedPeriod = `${formatUzbekDate(
@@ -427,7 +575,7 @@ class ExpenseController {
             $match: {
               date: { $gte: startOfPeriod, $lte: endOfPeriod },
               type: "Kirim",
-              category: { $ne: "Soldo", $ne: "Qarz olish" }, // Exclude both Soldo and Qarz olish
+              category: { $nin: ["Soldo", "Qarz olish", "Qarzni to'lash"] }, // Exclude Sold死
             },
           },
           { $group: { _id: null, totalAmount: { $sum: "$amount" } } },
@@ -476,7 +624,7 @@ class ExpenseController {
                     {
                       $and: [
                         { $eq: ["$type", "Kirim"] },
-                        { $ne: ["$category", "Qarz olish"] },
+                        { $nin: ["$category", ["Qarz olish", "Qarzni to'lash"]] },
                       ],
                     },
                     "$amount",

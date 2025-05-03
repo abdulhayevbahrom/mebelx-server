@@ -2,29 +2,62 @@ const MyDebt = require("../model/myDebtModel");
 const response = require("../utils/response");
 
 class MyDebtController {
-
   async getMyDebts(req, res) {
     try {
       const myDebts = await MyDebt.find();
-      if (!myDebts.length) return response.notFound(res, "MyDebts not found");
+      if (!myDebts.length) {
+        return response.notFound(res, "Qarz yozuvlari topilmadi");
+      }
 
-      // Calculate remaining amount for each debt
-      const debtsWithRemaining = myDebts.map(debt => {
-        // Sum of all debt amounts
-        const totalDebt = debt.debts.reduce((sum, d) => sum + d.amount, 0);
-        // Sum of all payment amounts
-        const totalPayments = debt.payments.reduce((sum, p) => sum + p.amount, 0);
-        // Calculate remaining amount
-        const remainingAmount = totalPayments - totalDebt;
+      // Har bir yozuv uchun qoldiq summalarni hisoblash
+      const debtsWithRemaining = myDebts.map((debt) => {
+        // Valyuta bo'yicha balansni hisoblash
+        const balanceByType = {
+          Naqd: 0, // "Naqd" va "Bank orqali" birgalikda hisoblanadi
+          dollar: 0,
+        };
+
+        // Qarzlarni yig'ish (kompaniya qarzdor)
+        debt.debts.forEach((d) => {
+          const type = d.type === "Bank orqali" ? "Naqd" : d.type; // "Bank orqali" ni "Naqd" ga aylantirish
+          balanceByType[type] += d.amount;
+        });
+
+        // To'lovlarni ayirish (kompaniya to'lagan yoki qabul qilgan)
+        debt.payments.forEach((p) => {
+          const type = p.type === "Bank orqali" ? "Naqd" : p.type; // "Bank orqali" ni "Naqd" ga aylantirish
+          balanceByType[type] -= p.amount;
+        });
+
+        // Valyuta bo'yicha qoldiq holatni aniqlash
+        const remainingByType = {
+          Naqd: {
+            amount: Math.abs(balanceByType["Naqd"]),
+            status:
+              balanceByType["Naqd"] > 0
+                ? "Kompaniya qarzdor"
+                : balanceByType["Naqd"] < 0
+                  ? "Kompaniyaga qarzdor"
+                  : "Qarz yo'q",
+          },
+          dollar: {
+            amount: Math.abs(balanceByType["dollar"]),
+            status:
+              balanceByType["dollar"] > 0
+                ? "Kompaniya qarzdor"
+                : balanceByType["dollar"] < 0
+                  ? "Kompaniyaga qarzdor"
+                  : "Qarz yo'q",
+          },
+        };
 
         return {
           ...debt._doc,
-          remainingAmount
+          remainingByType,
         };
       });
 
-
-      return response.success(res, "MyDebts found", debtsWithRemaining);
+      return response.success(res, "Qarz yozuvlari topildi", debtsWithRemaining);
     } catch (err) {
       return response.serverError(res, err.message);
     }
@@ -33,7 +66,8 @@ class MyDebtController {
     try {
       const io = req.app.get("socket");
       const { body } = req.body;
-      const { amount, description, name, type } = body;
+      const { debtsType, amount, description, name, type } = body;
+      console.log(body);
 
       // Validate required fields
       if (!amount || !name || !type) {
@@ -46,17 +80,28 @@ class MyDebtController {
       }
 
       // Create debt data object
-      const debtData = {
-        name,
-        debts: [{ amount, date: new Date(), description: description }],
-        type,
-        payments: [],
-        isPaid: false,
-      };
-
+      let debtData;
+      if (debtsType === "Qarz Berish") {
+        debtData = {
+          name,
+          debts: [], // Add type here
+          type,
+          payments: [{ amount, date: new Date(), description, type }],
+          isPaid: false,
+        };
+      } else {
+        debtData = {
+          name,
+          debts: [{ amount, date: new Date(), description, type }],
+          type,
+          payments: [], // Add type here
+          isPaid: true,
+        };
+      }
 
       const myDebt = new MyDebt(debtData);
-      const savedDebt = await myDebt.save(); // Shunda ishlaydi
+      const savedDebt = await myDebt.save();
+
       // Emit socket event
       io.emit("updateMyDebt", savedDebt);
 

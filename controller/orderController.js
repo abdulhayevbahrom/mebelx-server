@@ -7,7 +7,9 @@ const sharp = require("sharp");
 const mongoose = require("mongoose");
 const { ObjectId } = mongoose.Types;
 
+
 class OrderController {
+
   // Barcha buyurtmalarni olish
   static async getOrders(req, res) {
     try {
@@ -19,7 +21,6 @@ class OrderController {
   }
 
   // Bitta buyurtmani olish
-  //   // Bitta buyurtmani olish
   static async getOrderById(req, res) {
     try {
       const order = await Order.findById(req.params.id);
@@ -29,6 +30,116 @@ class OrderController {
       return response.serverError(res, "Serverda xatolik yuz berdi", error);
     }
   }
+
+  // Buyurtmani o‘chirish
+  static async deleteOrderIntoInfo(req, res) {
+    try {
+      const { infoId, orderId } = req.params;
+
+      if (!infoId || !orderId) {
+        return response.badRequest(res, 'infoId va orderId maydonlari kerak');
+      }
+
+      if (!mongoose.isValidObjectId(infoId) || !mongoose.isValidObjectId(orderId)) {
+        return response.badRequest(res, 'Noto‘g‘ri infoId yoki orderId formati');
+      }
+
+      const info = await Order.findById(infoId);
+      if (!info) {
+        return response.notFound(res, 'Info hujjati topilmadi');
+      }
+
+      const orderIndex = info.orders.findIndex(order => order._id.toString() === orderId);
+      if (orderIndex === -1) {
+        return response.notFound(res, 'Buyurtma topilmadi');
+      }
+
+      info.orders.splice(orderIndex, 1);
+      await info.save();
+
+      return response.success(res, 'Buyurtma muvaffaqiyatli o‘chirildi', info);
+    } catch (error) {
+      console.error('Buyurtma o‘chirishda xatolik:', error);
+      return response.serverError(res, "Serverda xatolik yuz berdi", error);
+    }
+  }
+
+  // Buyurtma qo‘shish
+  static async createOrderIntoInfo(req, res) {
+    try {
+      const { infoId } = req.params;
+      const {
+        name,
+        length,
+        width,
+        height,
+        quantity,
+        originalPrice,
+        budget,
+        description,
+      } = req.body;
+      const file = req.file;
+
+      if (!infoId || !file) {
+        return response.badRequest(res, 'infoId va rasm kerak');
+      }
+
+      const processedImage = await sharp(file.buffer)
+        .resize({ width: 500, height: 500, fit: "cover" })
+        .jpeg({ quality: 90 })
+        .toBuffer();
+
+      const base64Image = processedImage.toString("base64");
+
+      const formData = new FormData();
+      formData.append("image", base64Image);
+
+      const api = `${process.env.IMAGE_BB_API_URL}?key=${process.env.IMAGE_BB_API_KEY}`;
+      let uploadedUrl;
+
+      try {
+        const resImg = await axios.post(api, formData, {
+          headers: formData.getHeaders(),
+        });
+
+        uploadedUrl = resImg?.data?.data?.url;
+        if (!uploadedUrl) {
+          throw new Error('Rasmni yuklashda xatolik: URL topilmadi');
+        }
+      } catch (uploadError) {
+        console.error('ImgBB upload error:', uploadError.message);
+        return response.serviceUnavailable(res, 'Rasmni yuklashda xatolik yuz berdi. Iltimos, keyinroq qayta urinib ko‘ring.', uploadError.message);
+      }
+
+      const orderData = {
+        name,
+        dimensions: {
+          length: +length,
+          width: +width,
+          height: +height,
+        },
+        quantity: +quantity,
+        originalPrice: +originalPrice,
+        budget: +budget,
+        description,
+        image: uploadedUrl,
+      };
+
+      const info = await Order.findById(infoId);
+      if (!info) {
+        return response.notFound(res, 'Info hujjati topilmadi');
+      }
+
+      info.orders.unshift(orderData);
+      await info.save();
+
+      return response.created(res, 'Buyurtma muvaffaqiyatli qo‘shildi', info);
+    } catch (error) {
+      console.error('Buyurtma qo‘shishda xatolik:', error);
+      return response.serverError(res, "Serverda xatolik yuz berdi", error);
+    }
+  }
+
 
   static async createOrder(req, res) {
     try {
@@ -78,9 +189,9 @@ class OrderController {
         budget: +item.budget,
         quantity: +item.quantity,
         dimensions: {
-          length: +item.dimensions.length,
-          width: +item.dimensions.width,
-          height: +item.dimensions.height,
+          length: +item.dimensions?.length,
+          width: +item.dimensions?.width,
+          height: +item.dimensions?.height,
         },
         image: item.image,
         description: item.description,
@@ -201,6 +312,43 @@ class OrderController {
       );
     } catch (error) {
       return response.serverError(res, "Serverda xatolik yuz berdi", error);
+    }
+  };
+
+  // Omborchi material berdi
+  static giveMaterialSoldo = async (req, res) => {
+    try {
+      const { orderCardId, orderId, materialName, givenQuantity, price } = req.body;
+
+      // Kirish ma'lumotlarini tekshirish
+      if (!orderId || !materialName || !givenQuantity || !price) {
+        return response.badRequest(res, "Majburiy maydonlar kiritilmagan");
+      }
+
+      // Parallel ravishda ma'lumotlarni olish va xatolarni boshqarish
+      const [order, storeMaterial] = await Promise.all([
+        Order.findById(orderId).orFail(() => new Error("Buyurtma topilmadi")),
+        StoreModel.findOne({ name: materialName }).orFail(() => new Error("Material topilmadi"))
+      ]);
+
+      // Berilgan material yozuvini yaratish va saqlash
+      const givenMaterial = await new MaterialGiven({
+        orderId,
+        orderCardId,
+        materialId: storeMaterial._id,
+        materialName,
+        givenQuantity,
+        unit: storeMaterial.unit,
+        price
+      }).save();
+
+      return response.success(
+        res,
+        `Material muvaffaqiyatli berildi: ${givenQuantity} ${givenMaterial.unit}`,
+        givenMaterial
+      );
+    } catch (error) {
+      return response.serverError(res, error.message || "Serverda xatolik yuz berdi", error);
     }
   };
 
@@ -427,6 +575,75 @@ class OrderController {
       return response.serverError(res, error.message);
     }
   };
+
+
+
+  static async updateMaterialGiven(req, res) {
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
+    try {
+      const { value } = req.body;
+      const { orderId, materialId, orderCardId } = req.params;
+
+      if (!orderId || !materialId || !orderCardId || !value) {
+        await session.abortTransaction();
+        return response.error(res, "Majburiy maydonlar yetishmayapti: orderId, materialId, orderCardId yoki value");
+      }
+
+      if (!ObjectId.isValid(orderId) || !ObjectId.isValid(materialId)) {
+        await session.abortTransaction();
+        return response.error(res, "orderId yoki materialId formati noto‘g‘ri");
+      }
+
+      const subtractValue = parseFloat(value);
+      if (isNaN(subtractValue) || subtractValue <= 0) {
+        await session.abortTransaction();
+        return response.error(res, "Value haqiqiy musbat son bo‘lishi kerak");
+      }
+
+      const materialGiven = await MaterialGiven.findOne({ orderId, materialId, orderCardId }).session(session);
+      if (!materialGiven) {
+        await session.abortTransaction();
+        return response.notFound(res, "MaterialGiven hujjati topilmadi");
+      }
+
+      const storeItem = await StoreModel.findById(materialId).session(session);
+      if (!storeItem) {
+        await session.abortTransaction();
+        return response.notFound(res, "Ombor materiali topilmadi");
+      }
+
+      const newGivenQuantity = Math.max(0, materialGiven.givenQuantity - subtractValue);
+      await StoreModel.findByIdAndUpdate(
+        materialId,
+        { $inc: { quantity: subtractValue } },
+        { session }
+      );
+
+      let result;
+      if (newGivenQuantity === 0) {
+        await MaterialGiven.deleteOne({ orderId, materialId, orderCardId }, { session });
+        result = { message: "givenQuantity 0 ga teng bo‘lgani uchun MaterialGiven o‘chirildi", data: null };
+      } else {
+        const updatedMaterialGiven = await MaterialGiven.findOneAndUpdate(
+          { orderId, materialId, orderCardId },
+          { $set: { givenQuantity: newGivenQuantity, date: new Date() } },
+          { new: true, session }
+        );
+        result = { message: "Material muvaffaqiyatli yangilandi", data: updatedMaterialGiven };
+      }
+
+      await session.commitTransaction();
+      return response.success(res, result.message, result.data);
+    } catch (error) {
+      await session.abortTransaction();
+      console.error("Error updating MaterialGiven:", error);
+      return response.serverError(res, "Ichki server xatosi");
+    } finally {
+      session.endSession();
+    }
+  }
 }
 
 module.exports = OrderController;

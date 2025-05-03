@@ -92,9 +92,13 @@ router.post(
   upload2.array("images", 10),
   OrderController.createOrder
 );
+router.delete('/orderIntoInfo/:infoId/orders/:orderId', OrderController.deleteOrderIntoInfo);
+router.post("/orderIntoInfo/:infoId", upload.single("image"), OrderController.createOrderIntoInfo);
+
 router.put("/order/:id", OrderController.updateOrder);
 router.delete("/order/:id", OrderController.deleteOrder);
 router.post("/order/giveMaterial", OrderController.giveMaterial);
+router.post("/order/giveMaterialSoldo", OrderController.giveMaterialSoldo);
 router.get("/order/progress/:orderId", OrderController.orderProgress);
 router.get(
   "/order/get-material/:orderId/:materialId",
@@ -110,6 +114,10 @@ router.post(
   "/order/additional/material",
   OrderController.createAdditionalMaterial
 );
+router.put("/ordermain/:orderId/material/:materialId/:orderCardId",
+  OrderController.updateMaterialGiven
+);
+
 // Buyurtmani yakunlash va materiallarni yangilash
 router.post("/complete-order", OrderController.completeOrder);
 
@@ -155,6 +163,11 @@ router.delete(
   orderShops.deleteMaterial
 );
 router.get("/getshopsbyisPaid", orderShops.getOrdersByisPaid);
+// getAggregatedOrders && processPayment &&  getReturnedOrders && processReturnedPay
+router.get("/newShops/getAggregatedOrders", orderShops.getAggregatedOrders);
+router.post("/newShops/processPayment", orderShops.processPayment);
+router.get("/newShops/getReturnedOrders", orderShops.getReturnedOrders);
+router.post("/newShops/processReturnedPay", orderShops.processReturnedPay);
 
 // driver
 router.get("/driver/all", driverController.getDrivers);

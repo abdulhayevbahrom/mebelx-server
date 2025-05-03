@@ -23,6 +23,7 @@ const MaterialGivenSchema = new mongoose.Schema({
   materialName: { type: String, required: true }, // Material nomi
   givenQuantity: { type: Number, required: true }, // Omborchi bergan miqdor
   unit: { type: String, required: true },
+  price: { type: Number },
   date: { type: Date, default: Date.now }, // Qachon berilganligi
   materialId: {
     type: mongoose.Schema.Types.ObjectId,
@@ -94,3 +95,8 @@ const Order = mongoose.model("Order", InfoSchema);
 
 // Eksport qilish
 module.exports = { Order, MaterialGiven };
+
+
+
+
+

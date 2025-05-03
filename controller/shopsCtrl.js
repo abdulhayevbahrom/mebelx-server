@@ -1,7 +1,7 @@
 // controllers/orderController.js
 const Orderlist = require("../model/shopsOrderList");
 const response = require("../utils/response");
-
+const mongoose = require('mongoose');
 class orderShops {
   // Yangi buyurtma qo'shish
   async createOrder(req, res) {
@@ -13,11 +13,215 @@ class orderShops {
     }
   }
 
+  // Express route handler to aggregate orders by shopName// Express route handler to aggregate orders by shopName
+  async getAggregatedOrders(req, res) {
+    try {
+      const orders = await Orderlist.find(); // Barcha buyurtmalarni olish
+
+      const aggregatedMap = {};
+
+      orders.forEach(order => {
+        const { shopName, totalPrice = 0, paid = 0 } = order;
+
+        if (!aggregatedMap[shopName]) {
+          aggregatedMap[shopName] = {
+            shopName,
+            totalPrice: 0,
+            paid: 0,
+            orders: []
+          };
+        }
+
+        aggregatedMap[shopName].totalPrice += totalPrice; // totalPrice ni qo'shish
+        aggregatedMap[shopName].paid += paid; // paid ni ham qo'shish
+        aggregatedMap[shopName].orders.push(order); // orders larni ham saqlab ketish
+      });
+
+      // Endi har bir shop uchun remaining ni hisoblaymiz
+      const aggregatedOrders = Object.values(aggregatedMap).map(shop => ({
+        shopName: shop.shopName,
+        totalPrice: Math.max(shop.totalPrice - shop.paid, 0),
+        paid: shop.paid,
+        remaining: shop.totalPrice, // agar paid katta bo'lsa 0 qilib yuboramiz
+        orders: shop.orders
+      }));
+      console.log(aggregatedOrders);
+      response.success(res, "Buyurtmalar muvaffaqiyatli agregatsiya qilindi", aggregatedOrders);
+    } catch (error) {
+      console.error('Error aggregating orders:', error);
+      response.serverError(res, error.message);
+    }
+  }
+
+  // Route to process payment for a shopName
+  async processPayment(req, res) {
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
+    try {
+      const { shopName, paymentAmount } = req.body;
+
+      if (!shopName || !paymentAmount) {
+        return response.error(res, "ShopName yoki paymentAmount yo'q", 400);
+      }
+
+      let amountLeft = Number(String(paymentAmount).replace(/\s/g, '')); // Probellarni olib tashlab number qilamiz
+
+      const orders = await Orderlist.find({ shopName, isPaid: false })
+        .sort({ createdAt: 1 })
+        .session(session);
+
+      if (!orders.length) {
+        await session.abortTransaction();
+        session.endSession();
+        return response.error(res, "To'lanmagan buyurtmalar topilmadi", 404);
+      }
+
+      for (const order of orders) {
+        const unpaidAmount = Number(order.totalPrice) - Number(order.paid);
+
+        if (amountLeft >= unpaidAmount) {
+          // To'liq to'lanadi
+          order.paid = Number(order.totalPrice);
+          order.isPaid = true;
+          amountLeft -= unpaidAmount;
+        } else {
+          // Qisman to'lanadi
+          order.paid = Number(order.paid) + amountLeft;
+          amountLeft = 0;
+        }
+
+        await order.save({ session });
+
+        if (amountLeft === 0) break; // Pul tugasa chiqamiz
+      }
+
+      // Agar pul ortib qolsa, birinchi orderning returnedMoney ga yozamiz
+      if (amountLeft > 0 && orders.length > 0) {
+        const firstOrder = orders[0];
+        firstOrder.returnedMoney = Number(firstOrder.returnedMoney || 0) + amountLeft;
+        await firstOrder.save({ session });
+      }
+
+      await session.commitTransaction();
+      session.endSession();
+
+      return response.success(res, "To'lovlar muvaffaqiyatli amalga oshirildi");
+    } catch (error) {
+      console.error("Error processing payment:", error);
+      await session.abortTransaction();
+      session.endSession();
+      return response.serverError(res, error.message);
+    }
+  }
+
+
+  async processReturnedPay(req, res) {
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
+    try {
+      const { shopIds, paymentAmount } = req.body;
+
+      const isIds = JSON.parse(shopIds); // to'g'rilandi
+      let amountLeft = Number(String(paymentAmount).replace(/\s/g, ''));
+
+      // ID lar bo'yicha orderlarni topamiz
+      const orders = await Orderlist.find({ _id: { $in: isIds } }).session(session);
+
+      if (orders.length === 0) {
+        throw new Error("Hech qanday buyurtma topilmadi.");
+      }
+
+      // Barcha orders bir xil shopName ga tegishli ekanini tekshiramiz
+      const firstShopName = orders[0].shopName;
+      const allSameShop = orders.every(order => order.shopName === firstShopName);
+
+      if (!allSameShop) {
+        throw new Error("Tanlangan buyurtmalar bir xil do'konga tegishli emas.");
+      }
+
+      // returnedMoney bo'yicha to'lovni taqsimlaymiz
+      for (const order of orders) {
+        const remainingToPay = order.returnedMoney - order.returnedPaid;
+
+        if (remainingToPay <= 0) {
+          continue; // Bu orderga to'lov kerak emas
+        }
+
+        const payAmount = Math.min(remainingToPay, amountLeft);
+
+        order.returnedPaid += payAmount;
+
+        if (order.returnedPaid >= order.returnedMoney) {
+          order.returnedState = true;
+        }
+
+        amountLeft -= payAmount;
+
+        await order.save({ session });
+
+        if (amountLeft <= 0) {
+          break;
+        }
+      }
+
+      await session.commitTransaction();
+      session.endSession();
+
+      return response.success(res, "To'lovlar muvaffaqiyatli amalga oshirildi");
+    } catch (error) {
+      console.error("Error processing payment:", error);
+      await session.abortTransaction();
+      session.endSession();
+      return response.serverError(res, error.message);
+    }
+  }
+
   // Barcha buyurtmalarni olish
   async getAllOrders(req, res) {
     try {
       const orders = await Orderlist.find().populate("shopsId").lean();
       response.success(res, "Barcha buyurtmalar", orders);
+    } catch (err) {
+      response.serverError(res, err.message);
+    }
+  }
+
+  // Barcha qaytarilishi kerak bo'lgan buyurtmalarni olish
+  async getReturnedOrders(req, res) {
+    try {
+      const orders = await Orderlist.find({
+        returnedMoney: { $gt: 0 },
+        returnedState: false,
+      })
+        .populate("shopsId")
+        .lean();
+
+      // ShopName bo'yicha guruhlab olish
+      const groupedOrders = {};
+
+      orders.forEach(order => {
+        const shopName = order.shopName || "Noma'lum do'kon"; // Agar shopName bo'sh bo'lsa
+
+        if (!groupedOrders[shopName]) {
+          groupedOrders[shopName] = {
+            shopName,
+            totalReturnedMoney: 0,
+            orders: [],
+          };
+        }
+
+        const unpaidAmount = (order.returnedMoney || 0) - (order.returnedPaid || 0);
+
+        groupedOrders[shopName].totalReturnedMoney += unpaidAmount;
+        groupedOrders[shopName].orders.push(order);
+      });
+
+      // Natijani array shakliga o'tkazish
+      const result = Object.values(groupedOrders);
+
+      response.success(res, "Guruhlangan qaytarilishi kerak bo'lgan buyurtmalar", result);
     } catch (err) {
       response.serverError(res, err.message);
     }

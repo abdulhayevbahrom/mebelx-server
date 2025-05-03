@@ -1,4 +1,5 @@
 const Driver = require("../model/driversModel");
+const Expense = require("../model/expense");
 const response = require("../utils/response");
 
 class DriverController {
@@ -14,38 +15,87 @@ class DriverController {
 
   async createDriver(req, res) {
     try {
-      let { driver, fare } = req.body;
-      if (!driver || !fare)
-        return response.badRequest(res, "Haydovchi va yo'lkira kiting");
+      let { driver, fare, state, description } = req.body;
 
-      let findDriver = await Driver.findById(driver.id);
+      // Validate required fields
+      if (!driver?.name || !fare)
+        return response.badRequest(res, "To‘liq ma'lumot kiriting");
+
+      // Prepare story entry for driver
+      const storyEntry = {
+        state,
+        price: fare,
+        description,
+      };
+
+      // Find existing driver by name
+      let findDriver = await Driver.findOne({ name: driver.name });
+
       if (findDriver) {
-        const result = await Driver.findByIdAndUpdate(
-          driver.id,
-          { $inc: { balance: fare } },
-          { new: true }
-        );
-        if (!result) {
-          return response.notFound(res, "Haydovchi topilmadi");
+        // Update existing driver's balance
+        findDriver.balance += fare;
+
+        // Faqat soldo false bo‘lsa, tarixga qo‘shiladi
+        if (!driver.soldo) {
+          findDriver.stroy.push(storyEntry);
         }
+
+        await findDriver.save();
+
         return response.success(
           res,
-          "Balans muvaffaqiyatli o'zgartirildi",
-          result
+          "Balans yangilandi" + (!driver.soldo ? " va tarix qo‘shildi" : ""),
+          findDriver
         );
       }
 
+      // Create new driver if not found
       const new_driver = await Driver.create({
         name: driver.name,
+        phone: driver.phone || "",
         balance: fare,
+        stroy: driver.soldo ? [] : [storyEntry], // story faqat soldo=false bo‘lsa yoziladi
       });
-      if (!new_driver)
-        return response.error(res, "Haydovchi yaratishda xatolik");
-      response.success(res, "Haydovchi yaratildi", new_driver);
+
+      // soldo true bo‘lsa, Expense yoziladi
+      if (driver.soldo) {
+        // Parse the month from driver.month
+        const monthDate = new Date(driver.month);
+        const year = monthDate.getFullYear();
+        const month = monthDate.getMonth(); // 0-based (January = 0, February = 1)
+
+        // Set start of the month (e.g., 2025-02-01T00:00:00.000Z)
+        const fromDate = new Date(year, month, 1, 0, 0, 0, 0);
+
+        // Set end of the month (e.g., 2025-02-28T23:59:59.999Z)
+        const toDate = new Date(year, month + 1, 0, 23, 59, 59, 999);
+
+        const expense = await Expense.create({
+          name: driver.name,
+          amount: fare,
+          type: "Chiqim",
+          category: "Soldo",
+          description: description || "Soldo to'lovi",
+          date: new Date(),
+          paymentType: "Naqd",
+          relevantId: new_driver._id,
+          soldoDate: {
+            from: fromDate,
+            to: toDate,
+          },
+        });
+
+        if (!expense) {
+          return response.error(res, "Xarajat yaratishda xatolik");
+        }
+      }
+
+      response.success(res, "Yangi haydovchi yaratildi", new_driver);
     } catch (error) {
       response.error(res, error.message);
     }
   }
+
 
   async incementBalance(req, res) {
     try {

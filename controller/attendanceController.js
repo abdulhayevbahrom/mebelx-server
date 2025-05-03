@@ -102,11 +102,11 @@ class AttendanceController {
   async getMonthlyAttendance(req, res) {
     try {
       const { year, month } = req.params;
-      const startOfMonth = new Date(year, month - 1, 1);
-      const endOfMonth = new Date(year, month, 0, 23, 59, 59);
+      console.log({ year, month });
 
+      // Match date strings starting with "YYYY-MM"
       const result = await AttendanceDB.find({
-        createdAt: { $gte: startOfMonth, $lte: endOfMonth },
+        date: { $regex: `^${year}-${month}` },
       });
 
       if (!result.length)

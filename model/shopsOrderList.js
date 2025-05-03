@@ -15,6 +15,8 @@ const orderSchema = new mongoose.Schema({
     isPaid: { type: Boolean, default: false },
     paid: { type: Number, default: 0 },
     returnedMoney: { type: Number, default: 0 },
+    returnedState: { type: Boolean, default: false }, // Oshiqcha pul qaytarildimi yoki yoq: returnedState: false   da  pul qaytarilmadi hali
+    returnedPaid: { type: Number, default: 0 },
     isType: { type: Boolean, default: true },
     totalPrice: { type: Number },
     shopsId: {
@@ -31,3 +33,9 @@ const orderSchema = new mongoose.Schema({
 const Orderlist = mongoose.model('Orderlist', orderSchema);
 
 module.exports = Orderlist;
+
+
+
+
+
+
