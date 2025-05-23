@@ -736,7 +736,6 @@ class OrderController {
         return response.error(res, "Insufficient quantity in warehouse");
       }
 
-      // Update WarehouseItem quantity: restore previous and subtract new
       warehouseItem.quantity += previousQuantity; // Restore previous quantity
       warehouseItem.quantity -= quantity; // Subtract new quantity
       await warehouseItem.save({ session });

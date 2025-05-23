@@ -16,7 +16,6 @@ Attendance.createIndexes({ workerId: 1, date: 1 });
 Expense.createIndexes({ relevantId: 1, date: 1, category: 1 });
 workersDB.createIndexes({ _id: 1 });
 
-// Helper function to parse hours from string (e.g., "8.5" to 8.5)
 const parseHours = (hours) => (hours ? parseFloat(hours) : 0);
 
 class WorkerController {
@@ -57,11 +56,7 @@ class WorkerController {
       const workersWithHourlySalary = workers.map((worker) => {
         // Ensure salary is an array
         const salaries = Array.isArray(worker.salary) ? worker.salary : [];
-
-        // Sort salaries by createdAt descending to ensure newest first
         const sortedSalaries = [...salaries].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-
-        // Calculate hourly salary for each salary entry
         const hourlySalaryArray = sortedSalaries.map((salaryEntry) => {
           const monthlySalary = Number(salaryEntry.salary) || 0; // Convert to number, default to 0
           const hourlySalary = totalHoursInMonth > 0
