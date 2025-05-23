@@ -1,7 +1,6 @@
 const router = require("express").Router();
 const multer = require("multer");
 const upload = multer();
-
 const upload2 = multer();
 
 // const adminController = require("../controller/adminController");
