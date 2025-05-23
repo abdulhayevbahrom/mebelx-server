@@ -1,5 +1,16 @@
 const mongoose = require("mongoose");
 
+// Salary Schema
+const salarySchema = new mongoose.Schema(
+  {
+    salary: { type: String, required: true, trim: true },
+  },
+  {
+    timestamps: true,
+    _id: true,
+  }
+);
+
 const workersSchema = new mongoose.Schema(
   {
     firstName: { type: String, required: true },
@@ -10,7 +21,7 @@ const workersSchema = new mongoose.Schema(
     phone: { type: String, required: true, unique: true },
     idNumber: { type: String, required: true },
     password: { type: String },
-    salary: { type: Number, default: 0 }, // Maosh (now Number for calculations)
+    salary: [salarySchema], // Corrected: Single array of salarySchema subdocuments
     login: { type: String },
     workerType: { type: String },
     img: { type: String },
@@ -31,9 +42,6 @@ const workersSchema = new mongoose.Schema(
   { timestamps: true, toJSON: { virtuals: true } }
 );
 
-
 module.exports = mongoose.model("Workers", workersSchema);
-
-
 
 

@@ -102,7 +102,6 @@ class AttendanceController {
   async getMonthlyAttendance(req, res) {
     try {
       const { year, month } = req.params;
-      console.log({ year, month });
 
       // Match date strings starting with "YYYY-MM"
       const result = await AttendanceDB.find({

@@ -2,6 +2,7 @@
 const Orderlist = require("../model/shopsOrderList");
 const response = require("../utils/response");
 const mongoose = require('mongoose');
+const moment = require('moment');
 class orderShops {
   // Yangi buyurtma qo'shish
   async createOrder(req, res) {
@@ -12,7 +13,22 @@ class orderShops {
       response.serverError(res, err.message);
     }
   }
+  async createOrderSoldo(req, res) {
+    try {
+      const { shopName, totalPrice } = req.body;
 
+      const cleanedData = {
+        shopName: shopName || "",
+        totalPrice: Number(totalPrice) || 0,
+      };
+
+      const order = await Orderlist.create(cleanedData);
+      response.created(res, "Buyurtma muvaffaqiyatli yaratildi", order);
+    } catch (err) {
+      console.error("Xato tafsilotlari:", err);
+      response.serverError(res, err.message || "Serverda xatolik yuz berdi");
+    }
+  }
   // Express route handler to aggregate orders by shopName// Express route handler to aggregate orders by shopName
   async getAggregatedOrders(req, res) {
     try {
@@ -45,7 +61,7 @@ class orderShops {
         remaining: shop.totalPrice, // agar paid katta bo'lsa 0 qilib yuboramiz
         orders: shop.orders
       }));
-      console.log(aggregatedOrders);
+
       response.success(res, "Buyurtmalar muvaffaqiyatli agregatsiya qilindi", aggregatedOrders);
     } catch (error) {
       console.error('Error aggregating orders:', error);
@@ -340,6 +356,125 @@ class orderShops {
       response.serverError(res, err.message);
     }
   }
+
+  async generateMonthlyReport(req, res) {
+    try {
+      const { month, year } = req.query;
+
+      // Validate input
+      if (!month || !year) {
+        return res.status(400).json({ message: 'Month and year are required' });
+      }
+
+      const monthNum = parseInt(month);
+      const yearNum = parseInt(year);
+
+      if (monthNum < 1 || monthNum > 12) {
+        return res.status(400).json({ message: 'Invalid month' });
+      }
+
+      // Define date range for the month
+      const startDate = new Date(yearNum, monthNum - 1, 1);
+      const endDate = new Date(yearNum, monthNum, 0, 23, 59, 59, 999);
+
+      // Aggregate orders for the specified month
+      const orders = await Orderlist.aggregate([
+        {
+          $match: {
+            createdAt: {
+              $gte: startDate,
+              $lte: endDate
+            }
+          }
+        },
+        {
+          $group: {
+            _id: "$shopName", // Group by shopName (or shopsId if needed)
+            totalOrders: { $sum: 1 },
+            totalPrice: { $sum: "$totalPrice" },
+            totalPaid: { $sum: "$paid" },
+            totalReturnedMoney: { $sum: "$returnedMoney" },
+            totalReturnedPaid: { $sum: "$returnedPaid" },
+            orders: { $push: "$$ROOT" }
+          }
+        },
+        {
+          $sort: { _id: 1 }
+        }
+      ]);
+
+      // Calculate overall statistics
+      const totalShops = orders.length;
+      const totalGoodsValue = orders.reduce((sum, shop) => sum + shop.totalPrice, 0);
+      const totalPaidAmount = orders.reduce((sum, shop) => sum + shop.totalPaid, 0);
+      const totalDebt = totalGoodsValue - totalPaidAmount;
+      const totalShouldReturn = orders.reduce((sum, shop) => sum + shop.totalReturnedMoney, 0);
+      const totalActuallyReturned = orders.reduce((sum, shop) => sum + shop.totalReturnedPaid, 0);
+      const remainingReturn = totalShouldReturn - totalActuallyReturned;
+
+      // Previous month's debt calculation
+      const prevMonthStart = new Date(yearNum, monthNum - 2, 1);
+      const prevMonthEnd = new Date(yearNum, monthNum - 1, 0, 23, 59, 59, 999);
+
+      const prevMonthOrders = await Orderlist.aggregate([
+        {
+          $match: {
+            createdAt: {
+              $gte: prevMonthStart,
+              $lte: prevMonthEnd
+            }
+          }
+        },
+        {
+          $group: {
+            _id: null,
+            totalPrice: { $sum: "$totalPrice" },
+            totalPaid: { $sum: "$paid" }
+          }
+        }
+      ]);
+
+      const prevMonthDebt = prevMonthOrders.length > 0
+        ? prevMonthOrders[0].totalPrice - prevMonthOrders[0].totalPaid
+        : 0;
+
+      // Format the report
+      const report = {
+        period: `${yearNum}-${monthNum.toString().padStart(2, '0')}`,
+        totalShopsOrdered: totalShops,
+        shopDetails: orders.map(shop => ({
+          shopName: shop._id,
+          orderCount: shop.totalOrders,
+          totalPrice: shop.totalPrice,
+          paidAmount: shop.totalPaid,
+          debt: shop.totalPrice - shop.totalPaid,
+          shouldReturn: shop.totalReturnedMoney,
+          actuallyReturned: shop.totalReturnedPaid
+        })),
+        summary: {
+          totalGoodsValue: totalGoodsValue,
+          totalPaid: totalPaidAmount,
+          currentMonthDebt: totalDebt,
+          previousMonthDebt: prevMonthDebt,
+          totalShouldReturn: totalShouldReturn,
+          totalActuallyReturned: totalActuallyReturned,
+          remainingReturn: remainingReturn
+        }
+      };
+
+      response.success(res, "Barcha hisobotlar", report);
+    } catch (error) {
+      console.error('Error generating monthly report:', error);
+      return res.status(500).json({
+        success: false,
+        error: 'Internal server error'
+      });
+    }
+  }
+
+
 }
 
 module.exports = new orderShops();
+
+

@@ -374,154 +374,6 @@ class ExpenseController {
     }
   }
 
-  // getBalanceReport = async (req, res) => {
-  //   try {
-  //     const { startDate, endDate } = req.body;
-  //     if (!startDate || !endDate) {
-  //       return response.badRequest(res, "Start date and end date are required");
-  //     }
-
-  //     const startOfPeriod = moment(startDate, "YYYY-MM-DD")
-  //       .startOf("day")
-  //       .toDate();
-  //     const endOfPeriod = moment(endDate, "YYYY-MM-DD").endOf("day").toDate();
-
-  //     if (startOfPeriod > endOfPeriod) {
-  //       return response.badRequest(res, "Start date must be before end date");
-  //     }
-
-  //     const uzMonthMapping = {
-  //       "01": "Yanvar",
-  //       "02": "Fevral",
-  //       "03": "Mart",
-  //       "04": "Aprel",
-  //       "05": "May",
-  //       "06": "Iyun",
-  //       "07": "Iyul",
-  //       "08": "Avgust",
-  //       "09": "Sentabr",
-  //       10: "Oktabr",
-  //       11: "Noyabr",
-  //       12: "Dekabr",
-  //     };
-
-  //     const formatUzbekDate = (date) => {
-  //       const momentDate = moment(date, "YYYY-MM-DD");
-  //       return `${momentDate.format("D")} -${
-  //         uzMonthMapping[momentDate.format("MM")]
-  //       } `;
-  //     };
-
-  //     const formattedPeriod = `${formatUzbekDate(
-  //       startOfPeriod
-  //     )} - ${formatUzbekDate(endOfPeriod)} `;
-  //     const [
-  //       incomeResult,
-  //       outgoingResult,
-  //       soldoResult,
-  //       qarzResult,
-  //       dailyReport,
-  //     ] = await Promise.all([
-  //       Expense.aggregate([
-  //         {
-  //           $match: {
-  //             date: { $gte: startOfPeriod, $lte: endOfPeriod },
-  //             type: "Kirim",
-  //             category: { $ne: "Soldo", $ne: "Qarz olish" }, // Exclude both Soldo and Qarz olish
-  //           },
-  //         },
-  //         { $group: { _id: null, totalAmount: { $sum: "$amount" } } },
-  //       ]),
-  //       Expense.aggregate([
-  //         {
-  //           $match: {
-  //             date: { $gte: startOfPeriod, $lte: endOfPeriod },
-  //             type: "Chiqim",
-  //           },
-  //         },
-  //         { $group: { _id: null, totalAmount: { $sum: "$amount" } } },
-  //       ]),
-  //       Expense.aggregate([
-  //         {
-  //           $match: {
-  //             date: { $gte: startOfPeriod, $lte: endOfPeriod },
-  //             type: "Kirim",
-  //             category: "Soldo",
-  //           },
-  //         },
-  //         { $group: { _id: null, totalAmount: { $sum: "$amount" } } },
-  //       ]),
-  //       Expense.aggregate([
-  //         {
-  //           $match: {
-  //             date: { $gte: startOfPeriod, $lte: endOfPeriod },
-  //             type: "Kirim",
-  //             category: "Qarz olish",
-  //           },
-  //         },
-  //         { $group: { _id: null, totalAmount: { $sum: "$amount" } } },
-  //       ]),
-  //       Expense.aggregate([
-  //         {
-  //           $match: {
-  //             date: { $gte: startOfPeriod, $lte: endOfPeriod },
-  //           },
-  //         },
-  //         {
-  //           $group: {
-  //             _id: { $dateToString: { format: "%Y-%m-%d", date: "$date" } },
-  //             income: {
-  //               $sum: {
-  //                 $cond: [
-  //                   {
-  //                     $and: [
-  //                       { $eq: ["$type", "Kirim"] },
-  //                       { $ne: ["$category", "Qarz olish"] },
-  //                     ],
-  //                   },
-  //                   "$amount",
-  //                   0,
-  //                 ],
-  //               },
-  //             },
-  //             outgoing: {
-  //               $sum: { $cond: [{ $eq: ["$type", "Chiqim"] }, "$amount", 0] },
-  //             },
-  //           },
-  //         },
-  //         { $sort: { _id: 1 } },
-  //       ]),
-  //     ]);
-
-  //     const incomeAmount = incomeResult.length
-  //       ? incomeResult[0].totalAmount
-  //       : 0;
-  //     const outgoingAmount = outgoingResult.length
-  //       ? outgoingResult[0].totalAmount
-  //       : 0;
-  //     const soldoAmount = soldoResult.length ? soldoResult[0].totalAmount : 0;
-  //     const qarzAmount = qarzResult.length ? qarzResult[0].totalAmount : 0;
-
-  //     // Subtract qarzAmount from balance
-  //     const balance = incomeAmount - outgoingAmount;
-
-  //     return response.success(res, "Balance report generated successfully", {
-  //       formattedPeriod,
-  //       incomeAmount,
-  //       outgoingAmount,
-  //       soldoAmount,
-  //       balance,
-  //       chartData: dailyReport.map(({ _id, income, outgoing }) => ({
-  //         date: formatUzbekDate(_id),
-  //         income,
-  //         outgoing,
-  //       })),
-  //     });
-  //   } catch (error) {
-  //     console.error(error);
-  //     return response.serverError(res, "Xatolik yuz berdi", error.message);
-  //   }
-  // };
 
   getBalanceReport = async (req, res) => {
     try {
@@ -762,6 +614,112 @@ class ExpenseController {
       res.status(500).json({ message: "Serverda xatolik yuz berdi" });
     }
   }
+
+
+  async getMonthlyReport(req, res) {
+    try {
+      const { month, year } = req.query;
+      // Validate month and year
+      if (!month || !year || isNaN(month) || isNaN(year)) {
+        return response.error(res, 'Month and year are required and must be valid numbers');
+      }
+
+      const monthNum = parseInt(month);
+      const yearNum = parseInt(year);
+
+      if (monthNum < 1 || monthNum > 12) {
+        return response.error(res, 'Month must be between 1 and 12');
+      }
+
+      // Calculate date range for the month
+      const startDate = new Date(yearNum, monthNum - 1, 1);
+      const endDate = new Date(yearNum, monthNum, 0, 23, 59, 59, 999);
+
+      // Aggregate data
+      const report = await Expense.aggregate([
+        {
+          $match: {
+            date: {
+              $gte: startDate,
+              $lte: endDate,
+            },
+          },
+        },
+        {
+          $group: {
+            _id: {
+              type: '$type',
+              paymentType: '$paymentType',
+            },
+            totalAmount: { $sum: '$amount' },
+            transactions: {
+              $push: {
+                name: '$name',
+                amount: '$amount',
+                category: '$category',
+                date: '$date',
+                paymentType: '$paymentType',
+                description: '$description',
+              },
+            },
+          },
+        },
+      ]);
+
+      // Process the results
+      let kirim = 0; // Total income in UZS (non-dollar)
+      let chiqim = 0; // Total expense in UZS (non-dollar)
+      let kirimDollar = 0; // Total income in USD
+      let chiqimDollar = 0; // Total expense in USD
+      let kirimTransactions = [];
+      let chiqimTransactions = [];
+
+      report.forEach((item) => {
+        const isDollar = item._id.paymentType === 'dollar';
+        if (item._id.type === 'Kirim') {
+          if (isDollar) {
+            kirimDollar += item.totalAmount;
+          } else {
+            kirim += item.totalAmount;
+          }
+          kirimTransactions = [...kirimTransactions, ...item.transactions];
+        } else if (item._id.type === 'Chiqim') {
+          if (isDollar) {
+            chiqimDollar += item.totalAmount;
+          } else {
+            chiqim += item.totalAmount;
+          }
+          chiqimTransactions = [...chiqimTransactions, ...item.transactions];
+        }
+      });
+
+      const profit = kirim - chiqim; // Profit in UZS
+      const profitDollar = kirimDollar - chiqimDollar; // Profit in USD
+
+      // Format response
+      const data = {
+        month: monthNum,
+        year: yearNum,
+        summary: {
+          totalIncome: kirim,
+          totalExpense: chiqim,
+          profit: profit,
+          totalIncomeDollar: kirimDollar,
+          totalExpenseDollar: chiqimDollar,
+          profitDollar: profitDollar,
+        },
+        details: {
+          income: kirimTransactions,
+          expenses: chiqimTransactions,
+        },
+      };
+
+      return response.success(res, 'Monthly report generated successfully', data);
+    } catch (error) {
+      console.error('Error generating monthly report:', error);
+      return response.serverError(res, 'Internal server error');
+    }
+  };
 }
 
 module.exports = new ExpenseController();

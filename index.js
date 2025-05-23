@@ -34,6 +34,9 @@ app.use(cors(corsOptions));
 app.set("socket", io);
 soket.connect(io);
 app.use("/api", authMiddleware, router);
+app.get("/api/ping", (req, res) => {
+  res.status(200).json({ message: "pong" });
+});
 app.get("/", (req, res) => res.send("Salom dunyo"));
 app.use(notfound);
 

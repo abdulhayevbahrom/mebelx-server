@@ -1,29 +1,61 @@
 const storeDB = require("../model/storeModel");
+const { Order, MaterialGiven } = require("../model/orderSchema");
 const response = require("../utils/response");
+const moment = require('moment');
 const mongoose = require("mongoose");
-
+const Orderlist = require("../model/shopsOrderList");
 class StoreController {
+
+
   async createStore(req, res) {
+    const { name, category, unit, quantity, pricePerUnit, supplier } = req.body;
+
     try {
-      let io = req.app.get("socket");
-      const data = req.body;
-      const store = await storeDB.create({
-        name: data.name,
-        category: data.category,
-        quantity: data.quantity,
-        pricePerUnit: data.pricePerUnit,
-        unit: data.unit,
-        supplier: data.supplier,
+      const existingItem = await storeDB.findOne({ name, category });
+      if (existingItem) {
+        // Mavjud qiymatlar
+        const oldQty = existingItem.quantity;
+        const oldPrice = existingItem.pricePerUnit;
+        const oldTotal = oldQty * oldPrice;
+
+        const newTotal = quantity * pricePerUnit;
+
+        const updatedQty = oldQty + quantity;
+        const updatedTotal = oldTotal + newTotal;
+
+        const averagePrice = updatedTotal / updatedQty;
+
+        // Yangilash uchun faqat zarur maydonlarni aniqlaymiz
+        const updatedFields = {
+          quantity: updatedQty,
+          pricePerUnit: Math.round(averagePrice),
+          supplier,
+        };
+
+        const updatedItem = await storeDB.findByIdAndUpdate(
+          existingItem._id,
+          { $set: updatedFields },
+          { new: true }
+        );
+
+        return response.created(res, "Yangi mahsulot omborga qo‘shildi", updatedItem);
+
+      }
+
+      // Yangi mahsulot qo‘shish
+      const newItem = await storeDB.create({
+        name,
+        category,
+        unit,
+        quantity,
+        pricePerUnit,
+        supplier,
       });
-
-      if (!store) return response.error(res, "Mahsulot qo'shilmadi");
-
-      response.created(res, "Mahsulot qo'shildi", store);
-      io.emit("newStore", store);
+      return response.created(res, "Yangi mahsulot omborga qo‘shildi", newItem);
     } catch (err) {
-      response.serverError(res, err.message, err);
+      response.serverError(res, "Server xatosi", err);
     }
-  }
+  };
 
   async updateStore(req, res) {
     try {
@@ -162,6 +194,64 @@ class StoreController {
       response.serverError(res, err.message, err);
     }
   }
+
+
+  // GET /api/report?month=4&year=2025
+  async getStoreReport(req, res) {
+    try {
+      const now = moment();
+      const month = parseInt(req.query.month) || now.month(); // 0-based
+      const year = parseInt(req.query.year) || now.year();
+
+      const startDate = moment.utc().year(year).month(month).startOf("month").toDate();
+      const endDate = moment.utc().year(year).month(month).endOf("month").add(1, "second").toDate();
+
+      // 1. Kirim (Orderlist -> materials orqali)
+      const orders = await Orderlist.find({
+        createdAt: { $gte: startDate, $lt: endDate }
+      });
+
+      let totalIncoming = 0;
+      orders?.forEach(order => {
+        order.materials?.forEach(material => {
+          totalIncoming += (material.pricePerUnit || 0) * (material.quantity || 0);
+        });
+      });
+
+      // 2. Chiqim (MaterialGiven)
+      const givens = await MaterialGiven.find({
+        date: { $gte: startDate, $lt: endDate }
+      });
+
+      let totalOutgoing = 0;
+      givens?.forEach(given => {
+        totalOutgoing += (given.price || 0) * (given.givenQuantity || 0);
+      });
+
+      // 3. Omborda qolgan jami mahsulotlar soni (storeDB)
+      const allStoreItems = await storeDB.find({});
+      let totalRemaining = 0;
+      allStoreItems?.forEach(item => {
+        totalRemaining += (item.pricePerUnit || 0) * (item.quantity || 0);
+      });
+      // Yakuniy hisobot
+      const myData = {
+        month: month + 1,
+        year,
+        totalIncoming,         // kirim
+        totalOutgoing,         // chiqim
+        net: totalIncoming - totalOutgoing, // farq
+        totalRemaining,        // ombordagi qolgan mahsulotlar soni
+      };
+
+      response.success(res, "Ombor hisobotlari", myData);
+    } catch (err) {
+      response.serverError(res, err.message);
+    }
+  }
+
+
+
 }
 
 module.exports = new StoreController();

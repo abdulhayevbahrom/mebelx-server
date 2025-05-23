@@ -20,16 +20,38 @@ class OrderController {
     }
   }
 
-  // Bitta buyurtmani olish
+
   static async getOrderById(req, res) {
     try {
+      // Find the order by ID
       const order = await Order.findById(req.params.id);
       if (!order) return response.notFound(res, "Buyurtma topilmadi");
-      return response.success(res, "Buyurtma muvaffaqiyatli olindi", order);
+
+      // Convert order to plain object
+      const orderData = order.toObject();
+
+      // Fetch MaterialGiven documents and map them to the corresponding orders
+      const orderIds = orderData.orders.map((orderItem) => orderItem._id);
+      const materialsGiven = await MaterialGiven.find({
+        orderCardId: { $in: orderIds },
+      });
+
+      // Add materialsGiven to each order in the orders array
+      orderData.orders = orderData.orders.map((orderItem) => {
+        const relatedMaterials = materialsGiven.filter(
+          (material) => material.orderCardId.toString() === orderItem._id.toString()
+        );
+        return {
+          ...orderItem,
+          materialsGiven: relatedMaterials,
+        };
+      });
+
+      return response.success(res, "Buyurtma muvaffaqiyatli olindi", orderData);
     } catch (error) {
       return response.serverError(res, "Serverda xatolik yuz berdi", error);
     }
-  }
+  };
 
   // Buyurtmani o‘chirish
   static async deleteOrderIntoInfo(req, res) {
@@ -207,8 +229,6 @@ class OrderController {
       // const io = req.app.get("socket");
       // io.emit("newOrder", newOrder);
     } catch (error) {
-      console.log(error);
-
       response.serverError(res, "Serverda xatolik yuz berdi", error);
     }
   }
@@ -253,7 +273,7 @@ class OrderController {
   // Omborchi material berdi
   static giveMaterial = async (req, res) => {
     try {
-      const { orderCardId, orderId, materialName, givenQuantity } = req.body;
+      const { orderCardId, price, orderId, materialName, givenQuantity } = req.body;
 
       // Buyurtmani topish
       const order = await Order.findById(orderId);
@@ -296,6 +316,7 @@ class OrderController {
       const givenMaterial = new MaterialGiven({
         orderId,
         materialName,
+        price,
         givenQuantity,
         orderCardId,
         materialId: material?._id,
@@ -576,8 +597,6 @@ class OrderController {
     }
   };
 
-
-
   static async updateMaterialGiven(req, res) {
     const session = await mongoose.startSession();
     session.startTransaction();
@@ -642,6 +661,113 @@ class OrderController {
       return response.serverError(res, "Ichki server xatosi");
     } finally {
       session.endSession();
+    }
+  }
+
+
+  static async editGivnMaterial(req, res) {
+    const { id } = req.params; // MaterialGiven document ID
+    const { quantity } = req.body; // New quantity from frontend
+
+    try {
+      // Start a MongoDB session for transaction
+      const session = await mongoose.startSession();
+      session.startTransaction();
+
+      // Find the MaterialGiven document by ID
+      const materialGiven = await MaterialGiven.findById(id).session(session);
+      if (!materialGiven) {
+        await session.abortTransaction();
+        session.endSession();
+        return response.notFound(res, "MaterialGiven not found");
+      }
+
+      // Find the WarehouseItem by materialName
+      const warehouseItem = await StoreModel.findOne({
+        name: materialGiven.materialName
+      }).session(session);
+
+      if (!warehouseItem) {
+        await session.abortTransaction();
+        session.endSession();
+        return response.notFound(res, "WarehouseItem not found");
+      }
+
+      // Check if quantity equals materialGiven.givenQuantity
+      if (quantity === materialGiven.givenQuantity) {
+        // Restore the previous quantity to WarehouseItem
+        warehouseItem.quantity += materialGiven.givenQuantity;
+        await warehouseItem.save({ session });
+
+        // Delete the MaterialGiven document
+        await MaterialGiven.findByIdAndDelete(id).session(session);
+
+        // Check if WarehouseItem quantity is now 0
+        if (warehouseItem.quantity === 0) {
+          // Find all MaterialGiven documents with this materialId
+          const materialGivenDocs = await MaterialGiven.find({ materialId: warehouseItem._id }).session(session);
+
+          // Sum up all givenQuantities to restore to WarehouseItem
+          const totalRestoredQuantity = materialGivenDocs.reduce((sum, doc) => sum + doc.givenQuantity, 0);
+
+          // Restore the total givenQuantities to WarehouseItem
+          warehouseItem.quantity += totalRestoredQuantity;
+          await warehouseItem.save({ session });
+
+          // Delete all MaterialGiven documents associated with this materialId
+          await MaterialGiven.deleteMany({ materialId: warehouseItem._id }).session(session);
+        }
+
+        // Commit the transaction
+        await session.commitTransaction();
+        session.endSession();
+
+        return response.success(res, "MaterialGiven deleted and quantity restored to warehouse", null);
+      }
+
+      // Original logic for quantity update
+      const previousQuantity = materialGiven.givenQuantity;
+      const quantityDifference = quantity - previousQuantity;
+
+      // Check if sufficient quantity is available in WarehouseItem
+      if (warehouseItem.quantity < quantityDifference) {
+        await session.abortTransaction();
+        session.endSession();
+        return response.error(res, "Insufficient quantity in warehouse");
+      }
+
+      // Update WarehouseItem quantity: restore previous and subtract new
+      warehouseItem.quantity += previousQuantity; // Restore previous quantity
+      warehouseItem.quantity -= quantity; // Subtract new quantity
+      await warehouseItem.save({ session });
+
+      // Update MaterialGiven with new givenQuantity
+      materialGiven.givenQuantity = quantity;
+      await materialGiven.save({ session });
+
+      // Check if WarehouseItem quantity is now 0
+      if (warehouseItem.quantity === 1) {
+        const materialGivenDocs = await MaterialGiven.find({ materialId: warehouseItem._id }).session(session);
+        const totalRestoredQuantity = materialGivenDocs.reduce((sum, doc) => sum + doc.givenQuantity, 0);
+
+        // Restore the total givenQuantities to WarehouseItem
+        warehouseItem.quantity += totalRestoredQuantity;
+        await warehouseItem.save({ session });
+
+        // Delete all MaterialGiven documents associated with this materialId
+        await MaterialGiven.deleteMany({ materialId: warehouseItem._id }).session(session);
+      }
+
+      // Commit the transaction
+      await session.commitTransaction();
+      session.endSession();
+
+      return response.success(res, "Maxsulot muvaffaqiyatli omborga qaytarildi", materialGiven);
+    } catch (error) {
+      // Rollback transaction on error
+      await session.abortTransaction();
+      session.endSession();
+      return response.serverError(res, error.message);
     }
   }
 }

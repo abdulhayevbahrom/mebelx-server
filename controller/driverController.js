@@ -1,6 +1,8 @@
 const Driver = require("../model/driversModel");
 const Expense = require("../model/expense");
+const { Order } = require("../model/orderSchema");
 const response = require("../utils/response");
+const mongoose = require("mongoose");
 
 class DriverController {
   async getDrivers(req, res) {
@@ -15,27 +17,22 @@ class DriverController {
 
   async createDriver(req, res) {
     try {
-      let { driver, fare, state, description } = req.body;
+      let { driver, fare, state, description, selectedOrders } = req.body;
 
       // Validate required fields
       if (!driver?.name || !fare)
         return response.badRequest(res, "To‘liq ma'lumot kiriting");
 
-      // Prepare story entry for driver
       const storyEntry = {
         state,
         price: fare,
         description,
       };
 
-      // Find existing driver by name
       let findDriver = await Driver.findOne({ name: driver.name });
 
       if (findDriver) {
-        // Update existing driver's balance
         findDriver.balance += fare;
-
-        // Faqat soldo false bo‘lsa, tarixga qo‘shiladi
         if (!driver.soldo) {
           findDriver.stroy.push(storyEntry);
         }
@@ -47,6 +44,21 @@ class DriverController {
           "Balans yangilandi" + (!driver.soldo ? " va tarix qo‘shildi" : ""),
           findDriver
         );
+      }
+
+
+      if (selectedOrders && selectedOrders.length > 0) {
+        const objectIdOrders = selectedOrders.map(id => new mongoose.Types.ObjectId(id));
+        const orders = await Order.find({ _id: { $in: objectIdOrders } });
+        if (orders.length > 0) {
+          const amountPerOrder = fare / orders.length;
+          await Promise.all(
+            orders.map(async (order) => {
+              order.extraExpenses = (order.extraExpenses || 0) + amountPerOrder;
+              await order.save();
+            })
+          );
+        }
       }
 
       // Create new driver if not found
@@ -97,6 +109,7 @@ class DriverController {
   }
 
 
+
   async incementBalance(req, res) {
     try {
       const driver = await Driver.findByIdAndUpdate(
@@ -139,6 +152,80 @@ class DriverController {
       response.error(res, error.message);
     }
   }
+
+
+
+  async monthlyReportDriver(req, res) {
+    try {
+      const { month, year } = req.query;
+
+      // Validate input
+      if (!month || !year) {
+        report.notFound({ message: 'Month and year are required' });
+      }
+
+      const monthNum = parseInt(month);
+      const yearNum = parseInt(year);
+
+      if (monthNum < 1 || monthNum > 12) {
+        report.notFound({ message: 'Invalid month' });
+      }
+
+      // Define date range for the month
+      const startDate = new Date(yearNum, monthNum - 1, 1);
+      const endDate = new Date(yearNum, monthNum, 0, 23, 59, 59, 999);
+
+      // Aggregate driver data
+      const report = await Driver.aggregate([
+        {
+          $unwind: '$stroy' // Unwind the stroy array
+        },
+        {
+          $match: {
+            'stroy.date': {
+              $gte: startDate,
+              $lte: endDate
+            }
+          }
+        },
+        {
+          $group: {
+            _id: {
+              driverId: '$_id',
+              name: '$name',
+              balance: '$balance'
+            },
+            deliveryCount: { $sum: 1 },
+            totalPrice: { $sum: '$stroy.price' }
+          }
+        },
+        {
+          $project: {
+            _id: 0,
+            driverId: '$_id.driverId',
+            name: '$_id.name',
+            deliveryCount: 1,
+            totalPrice: 1,
+            balance: '$_id.balance'
+          }
+        }
+      ]);
+      const drivers = {
+        month: monthNum,
+        year: yearNum,
+        report: report.map(driver => ({
+          driverId: driver.driverId,
+          name: driver.name,
+          deliveryCount: driver.deliveryCount,
+          totalPrice: driver.totalPrice,
+          balance: driver.balance
+        }))
+      };
+      response.success(res, "Haydovchilar ro'yxati", drivers);
+    } catch (error) {
+      response.serverError(res, error.message);
+    }
+  };
 }
 
 module.exports = new DriverController();

@@ -30,6 +30,9 @@ router.put('/workingDays/:id', workingDays.update);
 
 // WORKER
 router.get("/worker/all", workerController.getWorkers);
+router.get("/workermain/all", workerController.getWorkerMain);
+router.get("/worker/monthlyData", workerController.getWorkerMonthlyData);
+router.get("/worker/totalRemainingSalary", workerController.getTotalRemainingSalary)
 router.post(
   "/worker/create",
   upload.single("image"),
@@ -39,6 +42,9 @@ router.post(
 router.post("/worker/login", workerController.login);
 router.delete("/worker/delete/:id", workerController.deleteWorker);
 router.put("/worker/update/:id", workerController.updateWorker);
+router.get("/workers/:workerId/salaries", workerController.getSalaries);
+router.post("/workers/:workerId/salaries", workerController.createSalary);
+router.delete("/workers/:workerId/salaries/:salaryId", workerController.deleteSalary);
 
 // ATTENDANCE => DAVOMAT
 router.get("/attendance/all", attendanceController.getAll);
@@ -53,6 +59,7 @@ router.put("/attendance/:id", attendanceController.updateByAttendance);
 
 // STORE
 router.get("/store/all", storeController.getStore);
+router.get("/store/report", storeController.getStoreReport);
 router.post("/store/create", storeValidation, storeController.createStore);
 router.delete("/store/delete/:id", storeController.deleteStore);
 router.put("/store/update/:id", storeController.updateStore);
@@ -83,10 +90,11 @@ router.get(
 );
 // /expenses?date=2025-02-02
 router.get("/expenses-by-salary", ExpenseController.getExpensesBySalary);
+router.get("/expensesMonthlyReport", ExpenseController.getMonthlyReport);
 
 // Orders
 router.get("/order/", OrderController.getOrders);
-router.get("/order/:id", OrderController.getOrderById);
+router.get("/orderId/:id", OrderController.getOrderById);
 router.post(
   "/order/",
   upload2.array("images", 10),
@@ -114,10 +122,12 @@ router.post(
   "/order/additional/material",
   OrderController.createAdditionalMaterial
 );
-router.put("/ordermain/:orderId/material/:materialId/:orderCardId",
+router.put("/ordfermain/:orderId/material/:materialId/:orderCardId",
   OrderController.updateMaterialGiven
 );
-
+router.put("/orderGiven/:id",
+  OrderController.editGivnMaterial
+);
 // Buyurtmani yakunlash va materiallarni yangilash
 router.post("/complete-order", OrderController.completeOrder);
 
@@ -151,6 +161,7 @@ router.delete("/shops/:id", optionController.deleteOption);
 const orderShops = require("../controller/shopsCtrl");
 
 router.post("/newShops/", orderShops.createOrder);
+router.post("/newShopsSoldo/", orderShops.createOrderSoldo);
 router.get("/newShops/", orderShops.getAllOrders);
 router.get("/newShops/shop/:shopsId", orderShops.getOrdersByShop);
 router.get("/newShops/unpaid/total/:shopsId", orderShops.getUnpaidTotalByShop);
@@ -168,6 +179,9 @@ router.get("/newShops/getAggregatedOrders", orderShops.getAggregatedOrders);
 router.post("/newShops/processPayment", orderShops.processPayment);
 router.get("/newShops/getReturnedOrders", orderShops.getReturnedOrders);
 router.post("/newShops/processReturnedPay", orderShops.processReturnedPay);
+//   const { year, month } = req.query; generateMonthlyReport
+router.get("/newShops/generateMonthlyReport", orderShops.generateMonthlyReport);
+
 
 // driver
 router.get("/driver/all", driverController.getDrivers);
@@ -175,10 +189,12 @@ router.post("/driver/create", driverController.createDriver);
 router.delete("/driver/delete/:id", driverController.deleteDriver);
 router.put("/driver/increment/:id", driverController.incementBalance);
 router.put("/driver/decrement/:id", driverController.decrementBalance);
+router.get("/driver/monthly-report", driverController.monthlyReportDriver);
 
 // my debts
 router.get("/myDebts/all", myDebtsController.getMyDebts);
 router.get("/myDebts", myDebtsController.getIsPaidFalse);
+router.get("/myDebts/monthly-report", myDebtsController.myDebtReport.bind(myDebtsController));
 router.post("/myDebts/create", myDebtsController.postMyDebt);
 router.put("/myDebts/payment/:id", myDebtsController.paymentForDebt);
 router.put("/myDebts/:id", myDebtsController.updateMyDebt);

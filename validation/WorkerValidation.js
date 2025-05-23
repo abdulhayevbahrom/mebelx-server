@@ -12,21 +12,41 @@ const workerValidation = (req, res, next) => {
       lastName: { type: "string", minLength: 2, maxLength: 50 },
       middleName: { type: "string", minLength: 2, maxLength: 50 },
       dayOfBirth: { type: "string", format: "date" },
-      phone: { type: "string", minLength: 9, maxLength: 9 },
+      phone: { type: "string", minLength: 9, maxLength: 9, pattern: "^[0-9]{9}$" },
       address: { type: "string" },
       password: { type: "string" },
       login: { type: "string" },
-      role: { type: "string" },
-      salary: { type: "string" },
+      role: {
+        type: "string",
+        enum: [
+          "manager",
+          "distributor",
+          "director",
+          "accountant",
+          "warehouseman",
+          "deputy",
+          "worker",
+        ],
+      },
       workerType: { type: "string" },
       idNumber: {
         type: "string",
         minLength: 9,
         maxLength: 9,
-        pattern: "^[a-zA-Z]{2}[0-9]{7}$",
+        pattern: "^[A-Z]{2}[0-9]{7}$",
       },
-      image: {
-        type: "string",
+      image: { type: "string" },
+      salary: {
+        type: "array",
+        items: {
+          type: "object",
+          properties: {
+            salary: { type: "string", pattern: "^[0-9]+$" }, // Raqamli string
+          },
+          required: ["salary"],
+          additionalProperties: false,
+        },
+        maxItems: 1, // Faqat bitta salary ob'ekti ruxsat etiladi
       },
     },
     required: ["firstName", "lastName", "dayOfBirth", "phone", "idNumber"],
@@ -45,9 +65,11 @@ const workerValidation = (req, res, next) => {
         dayOfBirth: "Tug‘ilgan sana noto‘g‘ri formatda, (masalan: 2000-01-01)",
         phone: "Telefon raqam noto‘g‘ri formatda, masalan: 939119572",
         idNumber: "ID raqam noto‘g‘ri formatda, masalan: AD1234567",
+        salary: "Maosh noto‘g‘ri formatda, faqat raqamli string bo‘lishi kerak",
       },
     },
   };
+
   const validate = ajv.compile(schema);
   let data = JSON.parse(JSON.stringify(req.body));
 
