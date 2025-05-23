@@ -1,6 +1,7 @@
 const router = require("express").Router();
 const multer = require("multer");
 const upload = multer();
+
 const upload2 = multer();
 
 // const adminController = require("../controller/adminController");
@@ -17,22 +18,24 @@ const storeController = require("../controller/storeController");
 const storeValidation = require("../validation/storeValidation");
 const optionController = require("../controller/shopsController");
 const driverController = require("../controller/driverController");
-const workingDays = require('../controller/WorkingDaysController'); // Yo'lni moslashtiring
+const workingDays = require("../controller/WorkingDaysController"); // Yo'lni moslashtiring
 const myDebtsController = require("../controller/myDebtController");
 const myDebtValidation = require("../validation/myDebtValidation");
 
-
 // Ish kunlari yaratish
-router.post('/workingDays', workingDays.create);
-router.get('/workingDays', workingDays.getAll);
-router.delete('/workingDays/:id', workingDays.delete);
-router.put('/workingDays/:id', workingDays.update);
+router.post("/workingDays", workingDays.create);
+router.get("/workingDays", workingDays.getAll);
+router.delete("/workingDays/:id", workingDays.delete);
+router.put("/workingDays/:id", workingDays.update);
 
 // WORKER
 router.get("/worker/all", workerController.getWorkers);
 router.get("/workermain/all", workerController.getWorkerMain);
 router.get("/worker/monthlyData", workerController.getWorkerMonthlyData);
-router.get("/worker/totalRemainingSalary", workerController.getTotalRemainingSalary)
+router.get(
+  "/worker/totalRemainingSalary",
+  workerController.getTotalRemainingSalary
+);
 router.post(
   "/worker/create",
   upload.single("image"),
@@ -44,7 +47,10 @@ router.delete("/worker/delete/:id", workerController.deleteWorker);
 router.put("/worker/update/:id", workerController.updateWorker);
 router.get("/workers/:workerId/salaries", workerController.getSalaries);
 router.post("/workers/:workerId/salaries", workerController.createSalary);
-router.delete("/workers/:workerId/salaries/:salaryId", workerController.deleteSalary);
+router.delete(
+  "/workers/:workerId/salaries/:salaryId",
+  workerController.deleteSalary
+);
 
 // ATTENDANCE => DAVOMAT
 router.get("/attendance/all", attendanceController.getAll);
@@ -100,8 +106,15 @@ router.post(
   upload2.array("images", 10),
   OrderController.createOrder
 );
-router.delete('/orderIntoInfo/:infoId/orders/:orderId', OrderController.deleteOrderIntoInfo);
-router.post("/orderIntoInfo/:infoId", upload.single("image"), OrderController.createOrderIntoInfo);
+router.delete(
+  "/orderIntoInfo/:infoId/orders/:orderId",
+  OrderController.deleteOrderIntoInfo
+);
+router.post(
+  "/orderIntoInfo/:infoId",
+  upload.single("image"),
+  OrderController.createOrderIntoInfo
+);
 
 router.put("/order/:id", OrderController.updateOrder);
 router.delete("/order/:id", OrderController.deleteOrder);
@@ -122,12 +135,11 @@ router.post(
   "/order/additional/material",
   OrderController.createAdditionalMaterial
 );
-router.put("/ordfermain/:orderId/material/:materialId/:orderCardId",
+router.put(
+  "/ordfermain/:orderId/material/:materialId/:orderCardId",
   OrderController.updateMaterialGiven
 );
-router.put("/orderGiven/:id",
-  OrderController.editGivnMaterial
-);
+router.put("/orderGiven/:id", OrderController.editGivnMaterial);
 // Buyurtmani yakunlash va materiallarni yangilash
 router.post("/complete-order", OrderController.completeOrder);
 
@@ -182,7 +194,6 @@ router.post("/newShops/processReturnedPay", orderShops.processReturnedPay);
 //   const { year, month } = req.query; generateMonthlyReport
 router.get("/newShops/generateMonthlyReport", orderShops.generateMonthlyReport);
 
-
 // driver
 router.get("/driver/all", driverController.getDrivers);
 router.post("/driver/create", driverController.createDriver);
@@ -194,7 +205,10 @@ router.get("/driver/monthly-report", driverController.monthlyReportDriver);
 // my debts
 router.get("/myDebts/all", myDebtsController.getMyDebts);
 router.get("/myDebts", myDebtsController.getIsPaidFalse);
-router.get("/myDebts/monthly-report", myDebtsController.myDebtReport.bind(myDebtsController));
+router.get(
+  "/myDebts/monthly-report",
+  myDebtsController.myDebtReport.bind(myDebtsController)
+);
 router.post("/myDebts/create", myDebtsController.postMyDebt);
 router.put("/myDebts/payment/:id", myDebtsController.paymentForDebt);
 router.put("/myDebts/:id", myDebtsController.updateMyDebt);
